@@ -12,15 +12,17 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class RequestsSupplier extends Thread {
-    private static Logger logger = LogManager.getLogger(RequestsSupplier.class.getName());
-    private static Logger tracker = LogManager.getLogger("hydrator_tracker");
+    private static final Logger logger = LogManager.getLogger(RequestsSupplier.class.getName());
+    private static final Logger tracker = LogManager.getLogger("hydrator_tracker");
     private final Buffer<WrappedHTTPRequest> buffer;
-    private int requestsLeft = 0, shift = 0, key = 0, requestsPerSingleFile = 0;
+    private int shift = 0;
+    private int key = 0;
+    private int requestsPerSingleFile = 0;
     private final int numberOfKeys;
     private Long[] timers;
     private final Key[] keys;
     private final Buffer<WorkKit> worksetQueue = new Buffer<>(5);
-    private Stack<WrappedHTTPRequest> requestsToRepeat = new Stack<>();
+    private final Stack<WrappedHTTPRequest> requestsToRepeat = new Stack<>();
 
     public RequestsSupplier(Key[] keys, Buffer<WrappedHTTPRequest> buffer) {
         if (keys.length == 0) throw new IllegalArgumentException("0 keys supplied");
@@ -48,13 +50,11 @@ public final class RequestsSupplier extends Thread {
     private void waitForFirstAvailableKey() throws InterruptedException, Key.UnusableKeyException, IOException {
         Arrays.sort(keys, Key::compareTo);
         long timeToWait = keys[0].getResetTime();
-        logger.warn("need to wait for  : " + timeToWait);
         if (timeToWait > 0) {
-            logger.info("Waiting for a key to reset... ETA : " + (timeToWait) + " seconds till " + new Date(System.currentTimeMillis() + timeToWait * 1000));
+            logger.warn("Waiting for a key to reset... ETA : " + (timeToWait) + " seconds till " + new Date(System.currentTimeMillis() + timeToWait * 1000));
             for (Key x : keys)
                 logger.trace(x.toString());
             TimeUnit.SECONDS.sleep(timeToWait + 2);
-
         }
         key = shift = 0;
         logger.info("Done waiting");
