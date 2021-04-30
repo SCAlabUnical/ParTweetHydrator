@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+    <Account>
+        <Username> user_name </Username> <!-- not strictly necessary-->
+        <!--
+
+        <Progetto>
+            <API_KEY>< /API_KEY>
+            <API_SECRET_KEY> </API_SECRET_KEY>
+            <ACCESS_TOKEN> </ACCESS_TOKEN>
+            <ACCESS_TOKEN_SECRET> </ACCESS_TOKEN_SECRET>
+        </Progetto>
+        this structure is mandatory for each set of oauth1 credentials 
+        <Account></Account> is not necessary 
+
+
+        -->
+        <Progetto>
+            <API_KEY>your api key</API_KEY>
+            <API_SECRET_KEY>your api secret key (aka consumer secret) </API_SECRET_KEY>
+            <ACCESS_TOKEN>your access token</ACCESS_TOKEN>
+            <ACCESS_TOKEN_SECRET>your secret access token</ACCESS_TOKEN_SECRET>
+        </Progetto>
+
+
+
+
+
+
+        <BearerToken></BearerToken> 
+        <BearerToken> </BearerToken>
+        <!--
+            bearer tokens can be anywhere the xpath query will just ask for //BearerToken
+        -->
+    </Account>
+     
+  
+
