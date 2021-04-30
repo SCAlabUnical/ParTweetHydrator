@@ -105,7 +105,7 @@
         </Root>
         <Logger name="hydrator_tracker" additivity="false" level="TRACE">
             <AppenderRef ref="progressTracker" level="TRACE"/>
-            <AppenderRef ref="console-log" level="WARN"/>
+            <AppenderRef ref="console-log" level="INFO"/>
         </Logger>
         <Logger name="lightweightVersion.Key" additivity="false" level="ALL">
             <AppenderRef ref="key_logger" level="TRACE"/>
