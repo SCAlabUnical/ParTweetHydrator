@@ -115,7 +115,7 @@ public final class Key implements Comparable<Key> {
                 '}';
     }
 
-    public HttpRequest signRequest(HttpRequest.Builder builder, URI uri, String method) throws IOException, UnusableKeyException, InterruptedException {
+    public HttpRequest signRequest(HttpRequest.Builder builder, URI uri, String method) throws UnusableKeyException, MalformedURLException {
         if (this.usesLeft <= 0)
             throw new IllegalStateException("Key has no uses left,wait for the reset " + usesLeft + " " + (epochResetTime - Instant.now().getEpochSecond()));
         HttpRequest req = signRequestPrivate(builder, uri, method);
@@ -171,7 +171,7 @@ public final class Key implements Comparable<Key> {
                 usesLeft = Integer.parseInt(statusEndpoint.get("remaining").toString());
                 epochResetTime = Long.parseLong(statusEndpoint.get("reset").toString());
             } else {
-                throw new RuntimeException("Bad request,check if the tokens supplied are valid");
+                throw new RuntimeException("Bad http response,check if the tokens supplied are valid");
             }
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Unable to validate key,check your connection");
