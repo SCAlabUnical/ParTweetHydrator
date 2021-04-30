@@ -1,0 +1,149 @@
+<Configuration name="Hydrator" status="INFO">
+    <Properties>
+        <Property name="LOG">%d{HH:mm:ss.SSS} [%t] %highlight{%level}{FATAL=bg_red, ERROR=red, WARN=yellow, INFO=green,
+            DEBUG=blue} - %msg%n"
+        </Property>
+        <Property name="LOG_PATTERN">[%-5p][%d{dd-MMM-yyyy HH:mm:ss a}] %C{0}.%M:(%L) - %m%n</Property>
+        <Property name="LOG_C">[%-5p] - %m - [timestamp : %d{HH:mm:ss.SSS}]%n</Property>
+    </Properties>
+    <Appenders>
+        <Console name="console-log" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <File name="completionTrackerAppender" fileName="${sys:log4j_logPath}/completion.txt" immediateFlush="true" >
+            <PatternLayout pattern="${LOG_C}"/>
+        </File>
+
+        <File name="recoverable" fileName="${sys:log4j_logPath}/recoverable_errors.txt" immediateFlush="true"
+              createOnDemand="true" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </File>
+        <RollingFile name="fatal" fileName="${sys:log4j_logPath}/fatal_errors.txt" immediateFlush="true"
+                     createOnDemand="true" filePattern="${sys:log4j_logPath}/fatal_errors_%d{MM-dd-yyyy}_%i.txt" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="200KB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="2"/>
+
+        </RollingFile>
+
+        <File name="key_logger" fileName="${sys:log4j_logPath}/keys_log.txt" immediateFlush="true" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </File>
+
+        <RollingFile name="executor" fileName="${sys:log4j_logPath}/executor_log.txt"
+                     filePattern="${sys:log4j_logPath}/executor_log_%d{MM-dd-yyyy}_%i.txt" immediateFlush="true" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="200KB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="2"/>
+        </RollingFile>
+
+        <RollingFile name="supplier" fileName="${sys:log4j_logPath}/supplier_log.txt"
+                     filePattern="${sys:log4j_logPath}/supplier_log_%d{MM-dd-yyyy}_%i.txt" immediateFlush="true" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="200KB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="2"/>
+
+        </RollingFile>
+
+        <RollingFile name="parser" fileName="${sys:log4j_logPath}/parser_log.txt"
+                     filePattern="${sys:log4j_logPath}/parser_log_%d{MM-dd-yyyy}_%i.txt" immediateFlush="true" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="200KB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="2"/>
+        </RollingFile>
+
+        <RollingFile name="IOHandler" fileName="${sys:log4j_logPath}/IOHandler_log.txt"
+                     filePattern="${sys:log4j_logPath}/IOHandler_log_%d{MM-dd-yyyy}_%i.txt" immediateFlush="true" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="200KB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="2"/>
+        </RollingFile>
+
+        <RollingFile name="hydrator" fileName="${sys:log4j_logPath}/hydrator_log.txt"
+                     filePattern="${sys:log4j_logPath}/hydrator_log_%d{MM-dd-yyyy}_%i.txt" immediateFlush="true" append="false">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="200KB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="2"/>
+        </RollingFile>
+
+        <RollingFile name="rej_handler" fileName="${sys:log4j_logPath}/reject_handler.txt"
+                     filePattern="${sys:log4j_logPath}/rej_handler_log%d{MM-dd-yyyy}_%i.txt" immediateFlush="true">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="200KB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="2"/>
+        </RollingFile>
+
+        <File name="progressTracker" fileName="${sys:log4j_logPath}/hydrator_progress.txt" immediateFlush="true">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </File>
+    </Appenders>
+    <Loggers>
+        <Root level="ERROR">
+            <AppenderRef ref="console-log"/>
+        </Root>
+        <Logger name="hydrator_tracker" additivity="false" level="TRACE">
+            <AppenderRef ref="progressTracker" level="TRACE"/>
+            <AppenderRef ref="console-log" level="WARN"/>
+        </Logger>
+        <Logger name="lightweightVersion.Key" additivity="false" level="ALL">
+            <AppenderRef ref="key_logger" level="TRACE"/>
+            <AppenderRef ref="console-log" level="WARN"/>
+            <AppenderRef ref="recoverable" level="ERROR"/>
+        </Logger>
+        <Logger name="lightweightVersion.Hydrator" additivity="false" level="ALL">
+            <AppenderRef ref="hydrator" level="INFO"/>
+            <AppenderRef ref="console-log" level="WARN"/>
+            <AppenderRef ref="recoverable" level="ERROR"/>
+        </Logger>
+        <Logger name="deprecated.RejectedRequestsHandler" additivity="false" level="ALL">
+            <AppenderRef ref="rej_handler" level="INFO"/>
+            <AppenderRef ref="console-log" level="WARN"/>
+            <AppenderRef ref="recoverable" level="ERROR"/>
+        </Logger>
+        <Logger name="lightweightVersion.RequestExecutor" additivity="false" level="ALL">
+            <AppenderRef ref="executor" level="INFO"/>
+            <AppenderRef ref="console-log" level="WARN"/>
+            <AppenderRef ref="recoverable" level="ERROR"/>
+        </Logger>
+        <Logger name="lightweightVersion.RequestsSupplier" additivity="false" level="ALL">
+            <AppenderRef ref="supplier" level="ALL"/>
+            <AppenderRef ref="console-log" level="WARN"/>
+            <AppenderRef ref="recoverable" level="ERROR"/>
+        </Logger>
+        <Logger name="lightweightVersion.IOHandler" additivity="false" level="ALL">
+            <AppenderRef ref="IOHandler" level="info"/>
+            <AppenderRef ref="console-log" level="warn"/>
+            <AppenderRef ref="recoverable" level="ERROR"/>
+        </Logger>
+        <Logger name="completionTracker" additivity="false" level="ALL">
+            <AppenderRef ref="completionTrackerAppender" level="ALL"/>
+        </Logger>
+        <Logger name="lightweightVersion.ResponseParserParallel" additivity="false" level="ALL">
+            <AppenderRef ref="parser" level="info"/>
+            <AppenderRef ref="console-log" level="warn"/>
+            <AppenderRef ref="recoverable" level="ERROR"/>
+        </Logger>
+    </Loggers>
+</Configuration>
