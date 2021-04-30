@@ -21,7 +21,7 @@ public final class RequestExecutor extends Thread {
     private ExecutorService services;
     private volatile boolean timeout = false, error = false;
     private int normalSleepTime, requests = 0, numberOfTimeouts;
-    private Map<Integer, Integer> causeAndValue = new HashMap<>(Map.of(4, 900, 5, 30));
+    private final Map<Integer, Integer> causeAndValue = new HashMap<>(Map.of(4, 900, 5, 30));
     private int timeoutReason = 0;
 
 
@@ -44,13 +44,14 @@ public final class RequestExecutor extends Thread {
     }
 
     private void handleTimeout() throws InterruptedException {
-        logger.warn("Executor has been timed out");
-        logger.warn("Executor has been timed out [Total timeouts : " + (numberOfTimeouts++ + 1) + "]");
         int val, howlong = causeAndValue.get(val = timeoutReason / 100);
         if (val == 5) {
-            normalSleepTime += 150;
+            normalSleepTime += 1;
+            logger.trace("[Executor - new cooldown time : " + normalSleepTime + " s]");
             causeAndValue.put(val, causeAndValue.get(val) + 3);
         }
+        logger.warn("Executor has been timed out for " + howlong);
+        logger.warn("Executor has been timed out [Total timeouts : " + (numberOfTimeouts++ + 1) + "]");
         TimeUnit.SECONDS.sleep(howlong);
         timeout = false;
     }

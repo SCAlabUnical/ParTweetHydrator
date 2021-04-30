@@ -1,7 +1,7 @@
 package lightweightVersion;
 
 
-import deprecated.ResponseParser;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -15,7 +15,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -29,7 +28,7 @@ public class ResponseParserParallel {
     private Buffer<ByteAndDestination> outerOutput;
     private final String logPath;
     private final RequestExecutor executor;
-    private final AtomicInteger tweets = new AtomicInteger(0), badResponses = new AtomicInteger(0);
+    private final AtomicInteger tweets = new AtomicInteger(0);
     private boolean hasTheExecutorBeenTimedOut = false, clientErrors = false;
     private long notificationExpireTimestap = Long.MAX_VALUE;
     private final Object executorInteractions = new Object();
@@ -125,7 +124,6 @@ public class ResponseParserParallel {
                                 return resp;
                             }
                     );
-                    logger.trace(err[0], e[0]);
                     if (!err[0])
                         response = res.join();
                     if (!err[0] && response.statusCode() == 200) {
@@ -141,9 +139,9 @@ public class ResponseParserParallel {
                                     hasTheExecutorBeenTimedOut = true;
                                 }
                             }
-                            logger.error(response.statusCode());
-                            logger.warn(response.headers());
-                            logger.error(response.body());
+                            logger.trace(response.statusCode());
+                            logger.trace(response.headers());
+                            logger.trace(response.body());
                         } else {
                             synchronized (executorInteractions) {
                                 if (!clientErrors) {
@@ -154,7 +152,6 @@ public class ResponseParserParallel {
                                     logger.error("[Repeating requests...]");
                                 }
                             }
-
                             logger.trace(Arrays.toString(e[0].getStackTrace()));
                             err[0] = false;
                         }

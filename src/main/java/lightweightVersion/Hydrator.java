@@ -26,7 +26,6 @@ public class Hydrator {
     private RequestExecutor executor;
     private RequestsSupplier supplier;
     private IOHandler ioHandler;
-    private final Buffer<List<Long>> worksetQueue;
     private final Buffer<WrappedCompletableFuture> risposteHTTP;
     private final Buffer<WrappedHTTPRequest> richiesteHTTP;
     private final Buffer<ByteAndDestination> codaOutput;
@@ -40,7 +39,6 @@ public class Hydrator {
         try {
             String line = "";
             StringTokenizer st;
-
             while ((line = br.readLine()) != null) {
                 st = new StringTokenizer(line, "$");
                 if (st.countTokens() < 2) logger.warn("Restore from log aborted,file structure unknown");
@@ -69,10 +67,9 @@ public class Hydrator {
         this.LOG_PATH = LOG_PATH;
         this.pathSalvataggio = save;
         int buffer_sizes = (int) Math.pow(10, (value.ordinal() + 2));
-        worksetQueue = new Buffer<>(buffer_sizes);
-        risposteHTTP = new Buffer<>(buffer_sizes);
-        richiesteHTTP = new Buffer<>(buffer_sizes);
-        codaOutput = new Buffer<>(buffer_sizes);
+        risposteHTTP = new Buffer<>(buffer_sizes,"risposteHTTP");
+        richiesteHTTP = new Buffer<>(buffer_sizes,"richiesteHTTP");
+        codaOutput = new Buffer<>(buffer_sizes,"queueToDisk");
         logger.info("Buffer sizes : " + buffer_sizes);
         try {
             tweetIdFiles = loadFiles(new File(tweetFiles));

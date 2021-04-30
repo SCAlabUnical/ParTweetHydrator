@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 public final class RequestsSupplier extends Thread {
     private static final Logger logger = LogManager.getLogger(RequestsSupplier.class.getName());
-    private static final Logger tracker = LogManager.getLogger("hydrator_tracker");
     private final Buffer<WrappedHTTPRequest> buffer;
     private int shift = 0;
     private int key = 0;
@@ -21,7 +20,7 @@ public final class RequestsSupplier extends Thread {
     private final int numberOfKeys;
     private Long[] timers;
     private final Key[] keys;
-    private final Buffer<WorkKit> worksetQueue = new Buffer<>(5);
+    private final Buffer<WorkKit> worksetQueue = new Buffer<>(5,"idFiles");
     private final Stack<WrappedHTTPRequest> requestsToRepeat = new Stack<>();
 
     public RequestsSupplier(Key[] keys, Buffer<WrappedHTTPRequest> buffer) {
@@ -83,7 +82,7 @@ public final class RequestsSupplier extends Thread {
                     up = Math.min(i + 100, idWorkset.size());
                     HttpRequest.Builder base = HttpRequest.newBuilder().uri((requestURI = utils.generateQuery(idWorkset.subList(i, up), 1))).POST(HttpRequest.BodyPublishers.noBody());
                     if (requestsToRepeat.empty()) {
-                        request = new WrappedHTTPRequest(keys[key].signRequest(base, requestURI, "GET"), reqTarget, requestsPerSingleFile++, curr);
+                        request = new WrappedHTTPRequest(keys[key].signRequest(base, requestURI, "POST"), reqTarget, requestsPerSingleFile++, curr);
                         i += (up - i);
                     } else {
                         old = requestsToRepeat.pop();

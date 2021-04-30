@@ -1,40 +1,53 @@
 package lightweightVersion;
 
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+
 public class Buffer<T> {
+    private final int id = instanceTracker.getAndIncrement();
+    private static final Logger logger = LogManager.getLogger(Buffer.class.getName());
     private final int BUFFER_SIZE;
     private final static AtomicInteger instanceTracker = new AtomicInteger(0);
-    private final int instanceID = instanceTracker.getAndIncrement();
     private T[] buffer;
     private int putIndex = 0, getIndex = 0, size = 0;
     private Semaphore producerSemaphore, consumerSemaphore, mutex;
+    private final static List<Buffer> instances = Collections.synchronizedList(new ArrayList<>());
+    private String stringId;
+    private static Runnable backgroundTracker = () -> {
 
+        while (true) {
+            try {
+                TimeUnit.SECONDS.sleep(15);
+                int length = instances.size();
+                for (int i = 0; i < length; i++)
+                    logger.trace("<Buffer filled at : " + instances.get(i).size + "/" + instances.get(i).buffer.length + " name + " + instances.get(i).stringId + " >");
+                logger.trace("");
+            } catch (InterruptedException e) {
+
+            }
+        }
+    };
 
     private void init() {
+        logger.info("Buffer n° " + this.id + " created");
+        if (this.id == 0) {
+            new Thread(backgroundTracker).start();
+            logger.trace("Background tracker started");
+        }
+        instances.add(this);
         buffer = (T[]) new Object[BUFFER_SIZE];
         producerSemaphore = new Semaphore(BUFFER_SIZE);
         consumerSemaphore = new Semaphore(0);
         mutex = new Semaphore(1);
-        Runnable logger = () -> {
-            boolean tookIt;
-            while (true) {
-                tookIt = false;
-                try {
-                    TimeUnit.SECONDS.sleep(5);
-                    mutex.acquire();
-                    tookIt = true;
-                    System.out.println("<Buffer filled at : " + size + " max : " + BUFFER_SIZE + "> <isFull : " + (size == BUFFER_SIZE) + ">");
-                } catch (Throwable e) {
-
-                } finally {
-                    if (tookIt) mutex.release();
-                }
-            }
-        };
     }
 
     public Buffer() {
@@ -46,6 +59,11 @@ public class Buffer<T> {
         if (size <= 0) throw new IllegalArgumentException();
         BUFFER_SIZE = size;
         init();
+    }
+
+    public Buffer(int size, String stringId) {
+        this(size);
+        this.stringId = stringId;
     }
 
     public void put(T item) throws InterruptedException {
@@ -69,7 +87,6 @@ public class Buffer<T> {
         consumerSemaphore.release();
         return true;
     }
-
 
 
     public T get() throws InterruptedException {
