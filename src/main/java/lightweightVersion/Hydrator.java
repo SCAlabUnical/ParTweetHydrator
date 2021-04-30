@@ -68,7 +68,8 @@ public class Hydrator {
         this.pathSalvataggio = save;
         int buffer_sizes = (int) Math.pow(10, (value.ordinal() + 2));
         risposteHTTP = new Buffer<>(buffer_sizes,"risposteHTTP");
-        richiesteHTTP = new Buffer<>(buffer_sizes,"richiesteHTTP");
+        // the buffer can't bee too large or requests will be created and the timestamp will be outdated by the time they are actually sent
+        richiesteHTTP = new Buffer<>(1000,"richiesteHTTP");
         codaOutput = new Buffer<>(buffer_sizes,"queueToDisk");
         logger.info("Buffer sizes : " + buffer_sizes);
         try {
