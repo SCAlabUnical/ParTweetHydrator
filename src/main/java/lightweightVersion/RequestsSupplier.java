@@ -81,14 +81,14 @@ public final class RequestsSupplier extends Thread {
                         continue;
                     }
                     up = Math.min(i + 100, idWorkset.size());
-                    HttpRequest.Builder base = HttpRequest.newBuilder().uri((requestURI = utils.generateQuery(idWorkset.subList(i, up), 1)));
+                    HttpRequest.Builder base = HttpRequest.newBuilder().uri((requestURI = utils.generateQuery(idWorkset.subList(i, up), 1))).POST(HttpRequest.BodyPublishers.noBody());
                     if (requestsToRepeat.empty()) {
                         request = new WrappedHTTPRequest(keys[key].signRequest(base, requestURI, "GET"), reqTarget, requestsPerSingleFile++, curr);
                         i += (up - i);
                     } else {
                         old = requestsToRepeat.pop();
                         URI oldUri = old.request().uri();
-                        request = new WrappedHTTPRequest(keys[key].signRequest(HttpRequest.newBuilder(oldUri), oldUri, "GET"), old.reqTarget(), old.reqNumber(),old.input());
+                        request = new WrappedHTTPRequest(keys[key].signRequest(HttpRequest.newBuilder(oldUri), oldUri, "POST"), old.reqTarget(), old.reqNumber(),old.input());
                         logger.info("[Received request to repeat][File " + request.input().getName() + " ][Request n° " + old.reqNumber() + "/" + request.reqTarget() + "]");
                     }
                     logger.info("[Request n° " + (requestsPerSingleFile) + " created ][Total : " + (total++) + "]" + "[Bounds " + i + " " + up + "]" + "[Valid for " + keys[key].getUsesLeft() + "] [Key : " + keys[key].getId() + "] [Shift " + shift + "]");
