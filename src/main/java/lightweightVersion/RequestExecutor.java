@@ -69,7 +69,7 @@ public final class RequestExecutor extends Thread {
         while (!this.isInterrupted()) {
             try {
                 request = toSend.get();
-                sent.put(new WrappedCompletableFuture(request, client.sendAsync(request.request(), HttpResponse.BodyHandlers.ofString()), request.input()
+                sent.put(new WrappedCompletableFuture(request, client.sendAsync(request.request(), HttpResponse.BodyHandlers.ofString()), request.fileInput()
                         , request.reqNumber()));
                 logger.info("[Request n° " + (requests++) + " sent : " + Instant.now().toEpochMilli() + "]");
                 if (executedWithoutResting++ == client_pool_size) {

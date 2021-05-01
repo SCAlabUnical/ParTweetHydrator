@@ -134,7 +134,7 @@ public final class utils {
         } catch (SAXException | ParserConfigurationException | XPathExpressionException e) {
             throw new IOException("File structure not valid,check github for a fac-simile");
         }
-        Collections.shuffle(tokens);
+        Collections.sort(tokens,Key::compareTo);
         return tokens.toArray(new Key[0]);
     }
 

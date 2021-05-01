@@ -3,7 +3,7 @@ package lightweightVersion;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.utils;
-import java.io.File;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -20,7 +20,7 @@ public final class RequestsSupplier extends Thread {
     private final int numberOfKeys;
     private Long[] timers;
     private final Key[] keys;
-    private final Buffer<WorkKit> worksetQueue = new Buffer<>(5,"idFiles");
+    private final Buffer<WorkKit> worksetQueue = new Buffer<>(5, "idFiles");
     private final Stack<WrappedHTTPRequest> requestsToRepeat = new Stack<>();
 
     public RequestsSupplier(Key[] keys, Buffer<WrappedHTTPRequest> buffer) {
@@ -51,8 +51,7 @@ public final class RequestsSupplier extends Thread {
         long timeToWait = keys[0].getResetTime();
         if (timeToWait > 0) {
             logger.warn("Waiting for a key to reset... ETA : " + (timeToWait) + " seconds till " + new Date(System.currentTimeMillis() + timeToWait * 1000));
-            for (Key x : keys)
-                logger.trace(x.toString());
+            Arrays.stream(keys).forEach(key -> logger.trace(key.toString()));
             TimeUnit.SECONDS.sleep(timeToWait + 2);
         }
         key = shift = 0;
@@ -65,13 +64,13 @@ public final class RequestsSupplier extends Thread {
         WrappedHTTPRequest request;
         WorkKit kit;
         List<Long> idWorkset;
-        File curr = null;
+        int file = -1;
         WrappedHTTPRequest old;
         while (!this.isInterrupted()) {
             try {
                 kit = worksetQueue.get();
+                file = kit.fileIndex();
                 idWorkset = kit.ids();
-                curr = kit.destination();
                 reqTarget = (int) Math.ceil((double) idWorkset.size() / 100);
                 while (i < idWorkset.size()) {
                     if (!keys[key].isUsable()) {
@@ -80,17 +79,16 @@ public final class RequestsSupplier extends Thread {
                         continue;
                     }
                     up = Math.min(i + 100, idWorkset.size());
-                    HttpRequest.Builder base = HttpRequest.newBuilder().uri((requestURI = utils.generateQuery(idWorkset.subList(i, up), 1))).POST(HttpRequest.BodyPublishers.noBody());
+                    HttpRequest base = HttpRequest.newBuilder().uri((requestURI = utils.generateQuery(idWorkset.subList(i, up), 1))).POST(HttpRequest.BodyPublishers.noBody()).build();
                     if (requestsToRepeat.empty()) {
-                        request = new WrappedHTTPRequest(keys[key].signRequest(base, requestURI, "POST"), reqTarget, requestsPerSingleFile++, curr);
+                        request = new WrappedHTTPRequest(keys[key].signRequest(base), reqTarget, requestsPerSingleFile++, file);
                         i += (up - i);
                     } else {
                         old = requestsToRepeat.pop();
-                        URI oldUri = old.request().uri();
-                        request = new WrappedHTTPRequest(keys[key].signRequest(HttpRequest.newBuilder(oldUri), oldUri, "POST"), old.reqTarget(), old.reqNumber(),old.input());
-                        logger.info("[Received request to repeat][File " + request.input().getName() + " ][Request n° " + old.reqNumber() + "/" + request.reqTarget() + "]");
+                        request = new WrappedHTTPRequest(keys[key].signRequest(old.request()), old.reqTarget(), old.reqNumber(), old.fileInput());
+                        logger.info("[Received request to repeat][File " + request.fileInput() + " ][Request n° " + old.reqNumber() + "/" + request.reqTarget() + "]");
                     }
-                    logger.info("[Request n° " + (requestsPerSingleFile) + " created ][Total : " + (total++) + "]" + "[Bounds " + i + " " + up + "]" + "[Valid for " + keys[key].getUsesLeft() + "] [Key : " + keys[key].getId() + "] [Shift " + shift + "]");
+                    logger.info("[Request n° " + (requestsPerSingleFile) + " created ][Total : " + (total++) + "]" + "[Bounds " + i + " " + up + "]" + "[Valid for " + keys[key].getUsesLeft() + "] [Key : " + keys[key].getId() + "]\n[Key " + keys[key].toString() + "]");
                     buffer.put(request);
                 }
             } catch (InterruptedException e) {
@@ -101,7 +99,7 @@ public final class RequestsSupplier extends Thread {
             } catch (IOException | Key.UnusableKeyException e) {
                 logger.fatal(e.getMessage());
             }
-            logger.trace("Created all the requests for file : " + curr.getName());
+            logger.trace("Created all the requests for file : " + file);
             requestsPerSingleFile = i = 0;
         }
         logger.trace("Hydrator terminating - Exit code 0");

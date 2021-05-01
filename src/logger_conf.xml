@@ -12,7 +12,7 @@
         </Console>
 
         <File name="completionTrackerAppender" fileName="${sys:log4j_logPath}/completion.txt" immediateFlush="true" >
-            <PatternLayout pattern="${LOG_C}"/>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
         </File>
 
 
@@ -83,7 +83,7 @@
         </RollingFile>
 
         <RollingFile name="hydrator" fileName="${sys:log4j_logPath}/hydrator_log.txt"
-                     filePattern="${sys:log4j_logPath}/hydrator_log_%d{MM-dd-yyyy}_%i.txt" immediateFlush="true" append="false">
+                     filePattern="${sys:log4j_logPath}/hydrator_log_%d{MM-dd-yyyy}_%i.txt" immediateFlush="true" append="true">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <Policies>
                 <SizeBasedTriggeringPolicy size="200KB"/>
@@ -92,18 +92,11 @@
             <DefaultRolloverStrategy max="2"/>
         </RollingFile>
 
-        <File name="progressTracker" fileName="${sys:log4j_logPath}/hydrator_progress.txt" immediateFlush="true">
-            <PatternLayout pattern="${LOG_PATTERN}"/>
-        </File>
     </Appenders>
     <Loggers>
         <Root level="ERROR">
             <AppenderRef ref="console-log"/>
         </Root>
-        <Logger name="hydrator_tracker" additivity="false" level="TRACE">
-            <AppenderRef ref="progressTracker" level="ALL"/>
-            <AppenderRef ref="console-log" level="INFO"/>
-        </Logger>
         <Logger name="lightweightVersion.Key" additivity="false" level="ALL">
             <AppenderRef ref="key_logger" level="ALL"/>
             <AppenderRef ref="console-log" level="WARN"/>
@@ -130,6 +123,7 @@
         </Logger>
         <Logger name="completionTracker" additivity="false" level="ALL">
             <AppenderRef ref="completionTrackerAppender" level="ALL"/>
+            <AppenderRef ref="console-log" level="ALL"/>
         </Logger>
         <Logger name="lightweightVersion.ResponseParserParallel" additivity="false" level="ALL">
             <AppenderRef ref="parser" level="ALL"/>

@@ -29,7 +29,7 @@ public class Buffer<T> {
                 TimeUnit.SECONDS.sleep(15);
                 int length = instances.size();
                 for (int i = 0; i < length; i++)
-                    logger.trace("<Buffer filled at : " + instances.get(i).size + "/" + instances.get(i).buffer.length + " name + " + instances.get(i).stringId + " >");
+                    logger.trace("<Buffer filled at : " + instances.get(i).size + "/" + instances.get(i).buffer.length + " name " + instances.get(i).stringId + " >");
                 logger.trace("");
             } catch (InterruptedException e) {
 

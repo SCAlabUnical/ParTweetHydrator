@@ -107,18 +107,19 @@ public final class Key implements Comparable<Key> {
 
     @Override
     public String toString() {
-        return "Key{" +
+        return  "Key{" +
                 "id=" + id +
                 ", type=" + type +
                 ", usesLeft=" + usesLeft +
                 ", epochResetTime=" + (epochResetTime - Instant.now().getEpochSecond()) +
                 '}';
+
     }
 
-    public HttpRequest signRequest(HttpRequest.Builder builder, URI uri, String method) throws UnusableKeyException, MalformedURLException {
+    public HttpRequest signRequest(HttpRequest request) throws UnusableKeyException, MalformedURLException {
         if (this.usesLeft <= 0)
             throw new IllegalStateException("Key has no uses left,wait for the reset " + usesLeft + " " + (epochResetTime - Instant.now().getEpochSecond()));
-        HttpRequest req = signRequestPrivate(builder, uri, method);
+        HttpRequest req = signRequestPrivate(request);
         if (firstUseTimestamp == 0) {
             firstUseTimestamp = Instant.now().getEpochSecond();
             epochResetTime = firstUseTimestamp + WINDOW_RESET_TIME * 60;
@@ -128,9 +129,12 @@ public final class Key implements Comparable<Key> {
     }
 
     /* proxied for integrity checks*/
-    private HttpRequest signRequestPrivate(HttpRequest.Builder builder, URI uri, String method) throws MalformedURLException {
+    private HttpRequest signRequestPrivate(HttpRequest request) throws MalformedURLException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(request.uri());
+        builder.method(request.method(), HttpRequest.BodyPublishers.noBody());
         if (this.type == KeyType.BEARER)
-            return builder.setHeader(utils.BEARER_TOKEN_HEADER, this.bearer).build();
+            return builder.setHeader("Authorization", this.bearer).build();
+        URI uri = request.uri();
         String query = uri.getQuery() == null ? "" : (uri.getQuery() + "&");
         StringTokenizer st2, st = new StringTokenizer(query, "&");
         HttpParameter[] params = new HttpParameter[st.countTokens()];
@@ -145,15 +149,12 @@ public final class Key implements Comparable<Key> {
         }
         URL urlT = uri.toURL();
         String url = urlT.getProtocol() + "://" + urlT.getHost() + urlT.getPath();
-        twitter4j.HttpRequest request = new twitter4j.HttpRequest(map.get(method.toUpperCase()),
+        twitter4j.HttpRequest tw4jreq = new twitter4j.HttpRequest(map.get(request.method().toUpperCase()),
                 url, params.length == 0 ? null : params, this.authConf, null);
-        String authHeader = this.authConf.getAuthorizationHeader(request);
+        String authHeader = this.authConf.getAuthorizationHeader(tw4jreq);
         return builder.setHeader("Authorization", authHeader).build();
     }
 
-    private HttpRequest signRequestPrivate(HttpRequest input) throws MalformedURLException {
-        return signRequestPrivate(HttpRequest.newBuilder().uri(input.uri()), input.uri(), input.method());
-    }
 
     public int getUsesLeft() {
         return usesLeft;

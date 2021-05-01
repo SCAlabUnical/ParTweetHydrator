@@ -1,7 +1,6 @@
 package lightweightVersion;
 
 
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -15,6 +14,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -29,9 +30,8 @@ public class ResponseParserParallel {
     private final String logPath;
     private final RequestExecutor executor;
     private final AtomicInteger tweets = new AtomicInteger(0);
-    private boolean hasTheExecutorBeenTimedOut = false, clientErrors = false;
     private long notificationExpireTimestap = Long.MAX_VALUE;
-    private final Object executorInteractions = new Object();
+    private AtomicBoolean hasTheExecutorBeenTimedOut = new AtomicBoolean(false), clientErrorsNotified = new AtomicBoolean(false), recoveringFromError = new AtomicBoolean(false);
 
     public ResponseParserParallel(RequestExecutor executor, Buffer<WrappedCompletableFuture> outerWorkset, Buffer<ByteAndDestination> outerOutput, String logPath) {
         this.workSet = outerWorkset;
@@ -60,12 +60,13 @@ public class ResponseParserParallel {
 
         private final int index;
         private final Stack<Character> parser = new Stack<>();
+        private ArrayList<byte[]> parsedBytes;
 
         public parser(int index) throws IOException {
             this.index = index;
-
         }
 
+        @Deprecated
         List<byte[]> parse(String answer) {
             int beginIndex = 0;
             ArrayList<byte[]> arrayList = new ArrayList<>(100);
@@ -97,14 +98,23 @@ public class ResponseParserParallel {
             return arrayList;
         }
 
+
         List<byte[]> parse2(String answer) {
-            ArrayList<byte[]> arrayList = new ArrayList<>(100);
+            parsedBytes = new ArrayList<>();
             JSONArray array = new JSONArray(answer);
             for (int i = 0; i < array.length(); i++)
-                arrayList.add(((array.get(i)).toString() + "\n").getBytes(StandardCharsets.UTF_8));
-            return arrayList;
+                parsedBytes.add(((array.get(i)).toString() + "\n").getBytes(StandardCharsets.UTF_8));
+            return parsedBytes;
         }
 
+        private void repeat(WrappedHTTPRequest request){
+            if (handler != null)
+                handler.addRequestToRepeat(request);
+            else {
+                logger.fatal("Missing handler, request lost");
+                logger.fatal("The file will be corrupted");
+            }
+        }
 
         public void run() {
             WrappedCompletableFuture workingOn;
@@ -124,49 +134,41 @@ public class ResponseParserParallel {
                                 return resp;
                             }
                     );
-                    if (!err[0])
+                    if (!err[0]) {
                         response = res.join();
-                    if (!err[0] && response.statusCode() == 200) {
-                        outerOutput.put(new ByteAndDestination(parse2(response.body()), workingOn.output(), workingOn.packetNumber()));
-                        logger.info("[Response n° " + workingOn.packetNumber() + " received] + [Status : " + response.statusCode() + "]");
-                    } else {
-                        if (!err[0]) {
-                            //bad status code
-                            synchronized (executorInteractions) {
-                                if (!hasTheExecutorBeenTimedOut) {
-                                    logger.warn("Timing out executor " + this.index);
-                                    notificationExpireTimestap = Instant.now().getEpochSecond() + executor.timeout(response.statusCode());
-                                    hasTheExecutorBeenTimedOut = true;
-                                }
+                        if (response.statusCode() == 200) {
+                            outerOutput.put(new ByteAndDestination(parse2(response.body()), workingOn.fileIndex(), workingOn.packetNumber()));
+                            logger.info("[Response n° " + workingOn.packetNumber() + " received] + [Status : " + response.statusCode() + "]");
+                        } else {
+                            if (hasTheExecutorBeenTimedOut.compareAndSet(false, true)) {
+                                recoveringFromError.set(true);
+                                logger.warn("Timing out executor " + this.index);
+                                notificationExpireTimestap = Instant.now().getEpochSecond() + executor.timeout(response.statusCode());
                             }
                             logger.trace(response.statusCode());
-                            logger.trace(response.headers());
                             logger.trace(response.body());
-                        } else {
-                            synchronized (executorInteractions) {
-                                if (!clientErrors) {
-                                    clientErrors = true;
-                                    executor.signalClientError();
-                                    notificationExpireTimestap = Instant.now().getEpochSecond() + 2 * 60;
-                                    logger.error("[An exception occurred : " + e[0].getCause() + " ]");
-                                    logger.error("[Repeating requests...]");
-                                }
-                            }
-                            logger.trace(Arrays.toString(e[0].getStackTrace()));
-                            err[0] = false;
+                            logger.trace(workingOn.request().request().uri());
+                            logger.trace(workingOn.request().request().method());
+                            repeat(workingOn.request());
                         }
-                        if (handler != null)
-                            handler.addRequestToRepeat(workingOn.request());
-                        else {
-                            logger.fatal("Missing handler, request lost");
-                            logger.fatal("The file will be corrupted");
+                    } else {
+                        if (clientErrorsNotified.compareAndSet(false, true)) {
+                            recoveringFromError.set(true);
+                            executor.signalClientError();
+                            notificationExpireTimestap = Instant.now().getEpochSecond() + 2 * 60;
+                            logger.error("[An exception occurred : " + e[0].getCause() + " ]");
+                            logger.error("[Repeating requests...]");
                         }
+                        logger.trace(Arrays.toString(e[0].getStackTrace()));
+                        err[0] = false;
+                        repeat(workingOn.request());
                     }
-                    /* sincronizzazione non necessaria,il risultato non cambia*/
-                    if (hasTheExecutorBeenTimedOut && (Instant.now().getEpochSecond() > notificationExpireTimestap))
-                        hasTheExecutorBeenTimedOut = false;
-                    if (clientErrors && (Instant.now().getEpochSecond() > notificationExpireTimestap))
-                        clientErrors = false;
+                    //uno dei parser si addormenta per ripristinare lo stato giusto
+                    if (recoveringFromError.compareAndSet(true, false)) {
+                        TimeUnit.SECONDS.sleep(notificationExpireTimestap - Instant.now().getEpochSecond());
+                        hasTheExecutorBeenTimedOut.compareAndSet(true, false);
+                        clientErrorsNotified.compareAndSet(true, false);
+                    }
                 } catch (InterruptedException interr) {
                     logger.error(interr.getMessage());
                     break;
