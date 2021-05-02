@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public class Buffer<T> {
+public final class Buffer<T> {
     private final int id = instanceTracker.getAndIncrement();
     private static final Logger logger = LogManager.getLogger(Buffer.class.getName());
     private final int BUFFER_SIZE;

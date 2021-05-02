@@ -3,7 +3,7 @@ package lightweightVersion;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.UnusableHydratorException;
+
 
 import java.io.*;
 import java.util.*;
@@ -18,18 +18,68 @@ public class Hydrator {
     private Logger logger = LogManager.getLogger(Hydrator.class.getName());
     private Key[] tokens;
     private List<File> tweetIdFiles, rehydratedFiles;
-    private final String LOG_PATH, pathSalvataggio;
+    private String LOG_PATH, pathSalvataggio, logConfLocation;
     private ResponseParserParallel parser;
     private RequestExecutor executor;
     private RequestsSupplier supplier;
     private IOHandler ioHandler;
-    private final Buffer<WrappedCompletableFuture> risposteHTTP;
-    private final Buffer<WrappedHTTPRequest> richiesteHTTP;
-    private final Buffer<ByteAndDestination> codaOutput;
+    private Buffer<WrappedCompletableFuture> risposteHTTP;
+    private Buffer<WrappedHTTPRequest> richiesteHTTP;
+    private Buffer<ByteAndDestination> codaOutput;
+    private exec_setting rate;
+    private int allComponentsHaveBeenSetup = 0;
 
     public enum exec_setting {SLOW, FAST, VERY_FAST, MAX}
 
+
     private static Hydrator instance;
+
+    public static synchronized Hydrator getInstance() {
+        if (instance == null)
+            instance = new Hydrator();
+        return instance;
+    }
+
+    private Hydrator() {
+
+    }
+
+
+    public Hydrator setLogPath(String logPath) {
+        this.LOG_PATH = logPath;
+        allComponentsHaveBeenSetup++;
+        return instance;
+    }
+
+    public Hydrator setSavePath(String savePath) {
+        this.pathSalvataggio = savePath;
+        allComponentsHaveBeenSetup++;
+        return instance;
+    }
+
+    public Hydrator setTokens(String pathToAccountsXML) throws IOException, Key.UnusableKeyException {
+        this.tokens = loadAllTokens(pathToAccountsXML);
+        allComponentsHaveBeenSetup++;
+        return instance;
+    }
+
+    public Hydrator setFileList(String pathToFileList) throws IOException {
+        this.tweetIdFiles = loadFiles(new File(pathToFileList));
+        allComponentsHaveBeenSetup++;
+        return instance;
+    }
+
+    public Hydrator setRate(exec_setting value) {
+        this.rate = value;
+        allComponentsHaveBeenSetup++;
+        return instance;
+    }
+
+    public Hydrator setLogConfigFile(String logToConfigFile) {
+        this.logConfLocation = logToConfigFile;
+        allComponentsHaveBeenSetup++;
+        return instance;
+    }
 
     private void tryToRestoreFromLog(File restoreFrom) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(restoreFrom));
@@ -46,59 +96,56 @@ public class Hydrator {
                 tweetIdFiles.stream().filter(file -> file.getName().equals(finalLine)).forEach(toRemove::add);
             }
             toRemove.forEach(file -> tweetIdFiles.remove(file));
-            toRemove.forEach(file -> logger.warn("Removed " + file.getName() + " from the work queue \t Reason : already processed"));
+            toRemove.forEach(file -> logger.warn("[Removed " + file.getName() + " from the work queue][Reason : already processed]"));
         } finally {
             br.close();
         }
     }
 
 
-    private Hydrator(String tweetFiles, String tokenFile, String LOG_PATH, String save, String configPath, exec_setting value) throws IOException {
-        System.setProperty("log4j.configurationFile", configPath);
+    private void init() {
+        if (allComponentsHaveBeenSetup != 6)
+            throw new IllegalStateException("Finish configuring the hydrator");
+        System.setProperty("log4j.configurationFile", logConfLocation);
         System.setProperty("log4j_logPath", LOG_PATH);
         org.apache.logging.log4j.core.LoggerContext ctx =
                 (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
         ctx.reconfigure();
-        this.LOG_PATH = LOG_PATH;
-        this.pathSalvataggio = save;
-        int buffer_sizes = (int) Math.pow(10, (value.ordinal() + 2));
+        int buffer_sizes = (int) Math.pow(10, (rate.ordinal() + 2));
         risposteHTTP = new Buffer<>(buffer_sizes, "risposteHTTP");
         // the buffer can't bee too large or requests will be created and the timestamp will be outdated by the time they are actually sent
         richiesteHTTP = new Buffer<>(500, "richiesteHTTP");
         codaOutput = new Buffer<>(buffer_sizes, "queueToDisk");
-        logger.info("Buffer sizes : " + buffer_sizes);
+        File mainLog;
         try {
-            tweetIdFiles = loadFiles(new File(tweetFiles));
-            File mainLog;
             if ((mainLog = new File(LOG_PATH + "completion.txt")).exists())
                 tryToRestoreFromLog(mainLog);
-            tweetIdFiles = Collections.unmodifiableList(tweetIdFiles);
-            rehydratedFiles = new ArrayList<>(tweetIdFiles.size());
-            tweetIdFiles.forEach(file -> rehydratedFiles.add(new File(pathSalvataggio + file.getName().replaceAll("\\.txt", ".json.gz"))));
-            rehydratedFiles = Collections.unmodifiableList(rehydratedFiles);
-            tokens = loadAllTokens(tokenFile);
-        } catch (IOException | Key.UnusableKeyException e) {
-            logger.fatal(e.getMessage());
-            logger.fatal("Errore sull'inizializzazione dei file,esecuzione abortita");
-            throw new UnusableHydratorException();
+        } catch (IOException e) {
+            logger.warn("Unable to restore from log,starting from scratch");
         }
-        executor = new RequestExecutor(richiesteHTTP, risposteHTTP, (value.ordinal() + 1) * 15);
+        tweetIdFiles = Collections.unmodifiableList(tweetIdFiles);
+        rehydratedFiles = new ArrayList<>(tweetIdFiles.size());
+        tweetIdFiles.forEach(file -> rehydratedFiles.add(new File(pathSalvataggio + file.getName().replaceAll("\\.txt", ".json.gz"))));
+        rehydratedFiles = Collections.unmodifiableList(rehydratedFiles);
+        executor = new RequestExecutor(richiesteHTTP, risposteHTTP, (rate.ordinal() + 1) * 15);
         supplier = new RequestsSupplier(tokens, richiesteHTTP);
-        ioHandler = new IOHandler(codaOutput, tweetIdFiles.size(), this);
+        ioHandler = new IOHandler(codaOutput, tweetIdFiles.size(), instance);
         parser = new ResponseParserParallel(executor, risposteHTTP, codaOutput, LOG_PATH);
     }
+
 
     File getOutputFile(int index) {
         return rehydratedFiles.get(index);
     }
 
-    private void hydrate() {
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
+    public void hydrate() {
+        this.init();
+        ExecutorService executorService = Executors.newFixedThreadPool(3);
         parser.attachHandler(supplier);
-        parser.startWorkers();
         executorService.execute(supplier);
         executorService.execute(executor);
         executorService.execute(ioHandler);
+        parser.startWorkers();
         int target;
         List<Long> ids;
         int index = 0;
@@ -115,6 +162,7 @@ public class Hydrator {
                 logger.trace(Arrays.toString(e.getStackTrace()));
             }
         }
+        allComponentsHaveBeenSetup = 0;
     }
 
 
@@ -127,6 +175,7 @@ public class Hydrator {
             System.out.println("[Disclaimer -> fast will probably result in a lot of timeouts at first]");
             return;
         }
-        new Hydrator(args[0], args[1], args[2], args[3], args[4], exec_setting.valueOf(args[5])).hydrate();
+        getInstance().setFileList(args[0]).setTokens(args[1]).setLogPath(args[2]).setSavePath(args[3])
+                .setLogConfigFile(args[4]).setRate(exec_setting.valueOf(args[5])).hydrate();
     }
 }

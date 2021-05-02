@@ -26,7 +26,7 @@ public class IOHandler implements Runnable {
         this.acks = new long[files];
         this.hydrator = hydrator;
         this.targetPerFile = new long[files];
-        this.fileStreams = new OutputStream[files][2];
+        this.fileStreams = new OutputStream[files][];
         Arrays.fill(targetPerFile, -1L);
     }
 
