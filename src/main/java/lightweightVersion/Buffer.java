@@ -43,11 +43,11 @@ public final class Buffer<T> {
             new Thread(backgroundTracker).start();
             logger.trace("Background tracker started");
         }
-        instances.add(this);
         buffer = (T[]) new Object[BUFFER_SIZE];
         producerSemaphore = new Semaphore(BUFFER_SIZE);
         consumerSemaphore = new Semaphore(0);
         mutex = new Semaphore(1);
+        instances.add(this);
     }
 
     public Buffer() {

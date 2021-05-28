@@ -10,17 +10,14 @@ import twitter4j.auth.Authorization;
 import twitter4j.auth.OAuthAuthorization;
 import twitter4j.conf.ConfigurationBuilder;
 import utils.utils;
-
+import utils.RestManager;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,15 +49,12 @@ public final class Key implements Comparable<Key> {
     private long epochResetTime = Instant.now().getEpochSecond() + 15 * 60;
     private final int WINDOW_RESET_TIME = 15;
     private long firstUseTimestamp = 0L;
-    private final static HttpClient client = HttpClient.newBuilder().build();
+
 
     public int getId() {
         return id;
     }
 
-    public long getAbsoluteReset() {
-        return epochResetTime;
-    }
 
     public boolean isUsable() {
         if (epochResetTime < Instant.now().getEpochSecond()) {
@@ -107,7 +101,7 @@ public final class Key implements Comparable<Key> {
 
     @Override
     public String toString() {
-        return  "Key{" +
+        return "Key{" +
                 "id=" + id +
                 ", type=" + type +
                 ", usesLeft=" + usesLeft +
@@ -165,16 +159,18 @@ public final class Key implements Comparable<Key> {
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(utils.API_ENDPOINTS[0] + utils.KEY_VALIDATION[0] + "?resources=statuses")).build();
             logger.info("Validating key");
-            HttpResponse<String> response = client.send(this.signRequestPrivate(request), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = RestManager.client.send(this.signRequestPrivate(request), HttpResponse.BodyHandlers.ofString());
+            System.out.println(response.statusCode());
             if (response.statusCode() == 200) {
                 JSONObject jsonObject = new JSONObject(response.body());
                 JSONObject statusEndpoint = (JSONObject) ((JSONObject) ((JSONObject) jsonObject.get("resources")).get("statuses")).get("/statuses/lookup");
                 usesLeft = Integer.parseInt(statusEndpoint.get("remaining").toString());
                 epochResetTime = Long.parseLong(statusEndpoint.get("reset").toString());
             } else {
-                throw new RuntimeException("Bad http response,check if the tokens supplied are valid");
+                throw new RuntimeException("Bad http response,check if the tokens supplied are valid " + response.statusCode());
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException  e) {
+            logger.fatal(e.getMessage());;
             throw new RuntimeException("Unable to validate key,check your connection");
         } catch (RuntimeException e) {
             throw new UnusableKeyException(e.getMessage());

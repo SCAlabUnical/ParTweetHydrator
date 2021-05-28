@@ -3,6 +3,7 @@ package lightweightVersion;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.orgJsonParsingStrategy;
 
 
 import java.io.*;
@@ -29,7 +30,7 @@ public class Hydrator {
     private exec_setting rate;
     private int allComponentsHaveBeenSetup = 0;
 
-    public enum exec_setting {SLOW, FAST, VERY_FAST, MAX}
+    public enum exec_setting {SLOW, FAST, VERY_FAST,MAX}
 
 
     private static Hydrator instance;
@@ -95,8 +96,10 @@ public class Hydrator {
                 String finalLine = line;
                 tweetIdFiles.stream().filter(file -> file.getName().equals(finalLine)).forEach(toRemove::add);
             }
-            toRemove.forEach(file -> tweetIdFiles.remove(file));
-            toRemove.forEach(file -> logger.warn("[Removed " + file.getName() + " from the work queue][Reason : already processed]"));
+            toRemove.forEach(file -> {
+                tweetIdFiles.remove(file);
+                logger.warn("[Removed " + file.getName() + " from the work queue][Reason : already processed]");
+            });
         } finally {
             br.close();
         }
@@ -114,7 +117,7 @@ public class Hydrator {
         int buffer_sizes = (int) Math.pow(10, (rate.ordinal() + 2));
         risposteHTTP = new Buffer<>(buffer_sizes, "risposteHTTP");
         // the buffer can't bee too large or requests will be created and the timestamp will be outdated by the time they are actually sent
-        richiesteHTTP = new Buffer<>(500, "richiesteHTTP");
+        richiesteHTTP = new Buffer<>(300, "richiesteHTTP");
         codaOutput = new Buffer<>(buffer_sizes, "queueToDisk");
         File mainLog;
         try {
@@ -127,10 +130,10 @@ public class Hydrator {
         rehydratedFiles = new ArrayList<>(tweetIdFiles.size());
         tweetIdFiles.forEach(file -> rehydratedFiles.add(new File(pathSalvataggio + file.getName().replaceAll("\\.txt", ".json.gz"))));
         rehydratedFiles = Collections.unmodifiableList(rehydratedFiles);
-        executor = new RequestExecutor(richiesteHTTP, risposteHTTP, (rate.ordinal() + 1) * 15);
+        executor = new RequestExecutor(richiesteHTTP, risposteHTTP, rate);
         supplier = new RequestsSupplier(tokens, richiesteHTTP);
         ioHandler = new IOHandler(codaOutput, tweetIdFiles.size(), instance);
-        parser = new ResponseParserParallel(executor, risposteHTTP, codaOutput, LOG_PATH);
+        parser = new ResponseParserParallel(executor, risposteHTTP, codaOutput, LOG_PATH,new orgJsonParsingStrategy());
     }
 
 
