@@ -79,13 +79,23 @@ public final class utils {
         }
     }
 
+    private static void checkSubFoldersRecursively(ArrayList<File> tweets, File file) {
+        File[] files = file.listFiles();
+        if(files == null) return;
+        Arrays.stream(files).forEach(f -> {
+            if(!f.isDirectory() && f.getName().matches(".*\\.txt")){
+                tweets.add(f);
+            } else checkSubFoldersRecursively(tweets,f);
+        });
+    }
 
     public static List<File> loadFiles(File inputPath) throws IOException {
-        if(inputPath.isDirectory()) {
-            File[] files = inputPath.listFiles();
-            if(files == null || files.length == 0)
+        if (inputPath.isDirectory()) {
+            ArrayList<File> tweets = new ArrayList<>();
+            checkSubFoldersRecursively(tweets,inputPath);
+            if (tweets.size() == 0)
                 throw new IOException("Bad directory specified");
-            return Arrays.stream(files).filter(file -> file.getName().matches(".*.txt")).toList();
+            return tweets;
         }
         BufferedReader br = new BufferedReader(new FileReader(inputPath));
         try {
@@ -140,7 +150,7 @@ public final class utils {
         } catch (SAXException | ParserConfigurationException | XPathExpressionException e) {
             throw new IOException("File structure not valid,check github for a fac-simile");
         }
-        Collections.sort(tokens,Key::compareTo);
+        Collections.sort(tokens, Key::compareTo);
         return tokens.toArray(new Key[0]);
     }
 
