@@ -160,7 +160,6 @@ public final class Key implements Comparable<Key> {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(utils.API_ENDPOINTS[0] + utils.KEY_VALIDATION[0] + "?resources=statuses")).build();
             logger.info("Validating key");
             HttpResponse<String> response = RestManager.client.send(this.signRequestPrivate(request), HttpResponse.BodyHandlers.ofString());
-            System.out.println(response.statusCode());
             if (response.statusCode() == 200) {
                 JSONObject jsonObject = new JSONObject(response.body());
                 JSONObject statusEndpoint = (JSONObject) ((JSONObject) ((JSONObject) jsonObject.get("resources")).get("statuses")).get("/statuses/lookup");

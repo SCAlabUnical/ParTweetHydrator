@@ -80,7 +80,13 @@ public final class utils {
     }
 
 
-    public static ArrayList<File> loadFiles(File inputPath) throws IOException {
+    public static List<File> loadFiles(File inputPath) throws IOException {
+        if(inputPath.isDirectory()) {
+            File[] files = inputPath.listFiles();
+            if(files == null || files.length == 0)
+                throw new IOException("Bad directory specified");
+            return Arrays.stream(files).filter(file -> file.getName().matches(".*.txt")).toList();
+        }
         BufferedReader br = new BufferedReader(new FileReader(inputPath));
         try {
             String line = "";

@@ -7,7 +7,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.zip.GZIPOutputStream;
 
 public class IOHandler implements Runnable {

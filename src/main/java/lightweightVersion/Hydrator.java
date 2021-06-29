@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import utils.orgJsonParsingStrategy;
 
 
+import java.awt.desktop.SystemEventListener;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -64,8 +65,8 @@ public class Hydrator {
         return instance;
     }
 
-    public Hydrator setFileList(String pathToFileList) throws IOException {
-        this.tweetIdFiles = loadFiles(new File(pathToFileList));
+    public Hydrator setFileList(String pathToFileListOrDirectory) throws IOException {
+        this.tweetIdFiles = loadFiles(new File(pathToFileListOrDirectory));
         allComponentsHaveBeenSetup++;
         return instance;
     }

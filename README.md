@@ -5,7 +5,7 @@ It supports OAUTH1 authentication and OAUTH2 bearer tokens and is capable of han
 </br>
 
 The executable jar will take 6 arguments : <br>
-* **fileId** a file containg a list (one for each line) of files (absolute paths) each composed of one tweet id per line    <br>
+* **fileId** a file containg a list (one for each line) of files (absolute paths) each composed of one tweet id per line or a directory    <br>if you pass a directory the hydrator will load all the text files in it and attempt to dehydrate them <br>
 * **tokensFile**  an xml file like the one in github _(mock.xml)_  <br>
 * **logFolder** the folder that will store the app's logs  <br>
 * **saveFolder** # folder where you want the hydrated tweets to be saved (saved in compressed gz format) <br>
