@@ -1,0 +1,23 @@
+[COMPLETED][27-Aug-2021 16:49:02 PM] IOHandler.run:(67) -  $ generated_range_1000.json.gz $ [Time elapsed : 1177 ms]
+[COMPLETED][27-Aug-2021 16:49:08 PM] IOHandler.run:(67) -  $ generated_range_10000.json.gz $ [Time elapsed : 7622 ms]
+[COMPLETED][27-Aug-2021 16:50:18 PM] IOHandler.run:(67) -  $ generated_range_100000.json.gz $ [Time elapsed : 77057 ms]
+[COMPLETED][27-Aug-2021 17:01:46 PM] IOHandler.run:(67) -  $ generated_range_1000000.json.gz $ [Time elapsed : 710325 ms]
+Twarc
+$ generated_range_1000.txt -> real	0m5,980s user	0m0,356s sys 0m0,028s
+$ generated_range_10000.txt -> real	0m54,807s user	0m1,207s sys	0m0,096s
+
+$ generated_range_100000.txt -> real	9m8,879s user	0m14,586s sys	0m0,621s
+$ generated_range_1000000.txt -> real	167m50,344s user	2m33,987s sys	0m7,963s
+
+ParTweetHydrator config :
+37 bearer tokens
+4 oauth1 set of tokens
+
+Time Elapsed
+
+File Sample Size in tweet ids - ParTweetHydrator - Twarc    - 	 Hydrator (JS) 
+
+	1.000  			   		  - 1177 ms          - 0m5,980s 	   TBT
+	10.000                    - 7622 ms          - 0m54,807s	   TBT
+	100.000                   - 77057 ms         - 9m8,879s        TBT
+	1.000.000                 - 710325 ms        - 167m50,344s     TBT

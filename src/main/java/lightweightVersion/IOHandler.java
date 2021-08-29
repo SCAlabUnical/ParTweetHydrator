@@ -17,13 +17,11 @@ public class IOHandler implements Runnable {
     private int risposte = 0, fileCounter = 0, fileIndex = Integer.MIN_VALUE;
     private long[] acks, targetPerFile;
     private final Buffer<ByteAndDestination> buffer;
-    private final Hydrator hydrator;
     private OutputStream[][] fileStreams;
 
-    public IOHandler(Buffer<ByteAndDestination> buffer, int files, Hydrator hydrator) {
+    public IOHandler(Buffer<ByteAndDestination> buffer, int files) {
         this.buffer = buffer;
         this.acks = new long[files];
-        this.hydrator = hydrator;
         this.targetPerFile = new long[files];
         this.fileStreams = new OutputStream[files][];
         Arrays.fill(targetPerFile, -1L);
@@ -49,7 +47,7 @@ public class IOHandler implements Runnable {
                     currentTarget = targetPerFile[fileIndex];
                     if (fileStreams[fileIndex] == null) {
                         streams = new OutputStream[2];
-                        streams[0] = new BufferedOutputStream(new FileOutputStream(hydrator.getOutputFile(fileIndex), false));
+                        streams[0] = new BufferedOutputStream(new FileOutputStream(Hydrator.getInstance().getOutputFile(fileIndex), false));
                         streams[1] = new GZIPOutputStream(streams[0]);
                         fileStreams[fileIndex] = streams;
                     }
@@ -66,12 +64,16 @@ public class IOHandler implements Runnable {
             } finally {
                 if (acks[fileIndex] == currentTarget)
                     try {
-                        completionLogger.log(Level.forName("COMPLETED", 650), " $ " + hydrator.getOutputFile(fileIndex).getName() + " $ ");
+                        completionLogger.log(Level.forName("COMPLETED", 650), " $ " + Hydrator.getInstance().getOutputFile(fileIndex).getName() + " $ [Time elapsed : " + Hydrator.getInstance().setTime(fileIndex)+" ms]");
                         currentCompressedStream.flush();
                         currentCompressedStream.close();
                         currentOutput.flush();
                         currentOutput.close();
                         fileStreams[fileIndex] = null;
+                        if(!Hydrator.getInstance().areThereMore(fileIndex+1)) {
+                            completionLogger.log(Level.forName("FINISHED",700),"Rehydrated everything,exiting");
+                            System.exit(0);
+                        }
                     } catch (Exception e) {
                         logger.fatal(e.getMessage());
                         System.out.println(e.getMessage());

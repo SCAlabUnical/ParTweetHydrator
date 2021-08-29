@@ -97,6 +97,7 @@ public final class utils {
                 throw new IOException("Bad directory specified");
             return tweets;
         }
+        if(inputPath.isFile()) return Collections.singletonList(inputPath);
         BufferedReader br = new BufferedReader(new FileReader(inputPath));
         try {
             String line = "";

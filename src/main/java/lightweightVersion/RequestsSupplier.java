@@ -69,6 +69,8 @@ public final class RequestsSupplier extends Thread {
         while (!this.isInterrupted()) {
             try {
                 kit = worksetQueue.get();
+                if(file!=kit.fileIndex())
+                    Hydrator.getInstance().setStartTime(kit.fileIndex());
                 file = kit.fileIndex();
                 idWorkset = kit.ids();
                 reqTarget = (int) Math.ceil((double) idWorkset.size() / 100);

@@ -20,6 +20,7 @@ public class Hydrator {
     private Logger logger = LogManager.getLogger(Hydrator.class.getName());
     private Key[] tokens;
     private List<File> tweetIdFiles, rehydratedFiles;
+    private HashMap<Integer, Long> timeElapsed = new HashMap<>();
     private String LOG_PATH, pathSalvataggio, logConfLocation;
     private ResponseParserParallel parser;
     private RequestExecutor executor;
@@ -31,7 +32,7 @@ public class Hydrator {
     private exec_setting rate;
     private int allComponentsHaveBeenSetup = 0;
 
-    public enum exec_setting {SLOW, FAST, VERY_FAST,MAX}
+    public enum exec_setting {SLOW, FAST, VERY_FAST, MAX}
 
 
     private static Hydrator instance;
@@ -129,14 +130,29 @@ public class Hydrator {
         }
         tweetIdFiles = Collections.unmodifiableList(tweetIdFiles);
         rehydratedFiles = new ArrayList<>(tweetIdFiles.size());
+        for (int i = 0; i < tweetIdFiles.size(); i++)
+            timeElapsed.put(i, System.currentTimeMillis());
         tweetIdFiles.forEach(file -> rehydratedFiles.add(new File(pathSalvataggio + file.getName().replaceAll("\\.txt", ".json.gz"))));
         rehydratedFiles = Collections.unmodifiableList(rehydratedFiles);
         executor = new RequestExecutor(richiesteHTTP, risposteHTTP, rate);
         supplier = new RequestsSupplier(tokens, richiesteHTTP);
-        ioHandler = new IOHandler(codaOutput, tweetIdFiles.size(), instance);
-        parser = new ResponseParserParallel(executor, risposteHTTP, codaOutput, LOG_PATH,new orgJsonParsingStrategy());
+        ioHandler = new IOHandler(codaOutput, tweetIdFiles.size());
+        parser = new ResponseParserParallel(executor, risposteHTTP, codaOutput, LOG_PATH, new orgJsonParsingStrategy());
     }
 
+    void setStartTime(int fileIndex) {
+        timeElapsed.put(fileIndex,System.currentTimeMillis() );
+    }
+
+    long setTime(int fileIndex) {
+        long old = timeElapsed.get(fileIndex), ret;
+        timeElapsed.put(fileIndex, ret = System.currentTimeMillis() - old);
+        return ret;
+    }
+
+    boolean areThereMore(int fileIndex) {
+        return rehydratedFiles.size() > fileIndex;
+    }
 
     File getOutputFile(int index) {
         return rehydratedFiles.get(index);
@@ -179,6 +195,7 @@ public class Hydrator {
             System.out.println("[Disclaimer -> fast will probably result in a lot of timeouts at first]");
             return;
         }
+        emptyFolder(args[2]);
         getInstance().setFileList(args[0]).setTokens(args[1]).setLogPath(args[2]).setSavePath(args[3])
                 .setLogConfigFile(args[4]).setRate(exec_setting.valueOf(args[5])).hydrate();
     }

@@ -11,6 +11,7 @@ import twitter4j.auth.OAuthAuthorization;
 import twitter4j.conf.ConfigurationBuilder;
 import utils.utils;
 import utils.RestManager;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -18,6 +19,7 @@ import java.net.URL;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -166,10 +168,13 @@ public final class Key implements Comparable<Key> {
                 usesLeft = Integer.parseInt(statusEndpoint.get("remaining").toString());
                 epochResetTime = Long.parseLong(statusEndpoint.get("reset").toString());
             } else {
+                System.out.println(this.type == KeyType.BEARER ? bearer : Arrays.toString(this.oauthParams));
                 throw new RuntimeException("Bad http response,check if the tokens supplied are valid " + response.statusCode());
+
             }
-        } catch (IOException | InterruptedException  e) {
-            logger.fatal(e.getMessage());;
+        } catch (IOException | InterruptedException e) {
+            logger.fatal(e.getMessage());
+            ;
             throw new RuntimeException("Unable to validate key,check your connection");
         } catch (RuntimeException e) {
             throw new UnusableKeyException(e.getMessage());
