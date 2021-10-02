@@ -195,7 +195,6 @@ public class Hydrator {
             System.out.println("[Disclaimer -> fast will probably result in a lot of timeouts at first]");
             return;
         }
-        emptyFolder(args[2]);
         getInstance().setFileList(args[0]).setTokens(args[1]).setLogPath(args[2]).setSavePath(args[3])
                 .setLogConfigFile(args[4]).setRate(exec_setting.valueOf(args[5])).hydrate();
     }
