@@ -6,9 +6,9 @@ import org.apache.logging.log4j.Logger;
 import utils.orgJsonParsingStrategy;
 
 
-import java.awt.desktop.SystemEventListener;
 import java.io.*;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,83 +16,71 @@ import java.util.concurrent.Executors;
 import static utils.utils.*;
 
 
-public class Hydrator {
+public enum Hydrator {
+    INSTANCE;
     private Logger logger = LogManager.getLogger(Hydrator.class.getName());
     private Key[] tokens;
     private List<File> tweetIdFiles, rehydratedFiles;
     private HashMap<Integer, Long> timeElapsed = new HashMap<>();
-    private String LOG_PATH, pathSalvataggio, logConfLocation;
+    private String LOG_PATH, pathSalvataggio, logConfLocation = "logger_conf.xml";
     private ResponseParserParallel parser;
     private RequestExecutor executor;
     private RequestsSupplier supplier;
-    private IOHandler ioHandler;
+    IOHandler ioHandler;
     private Buffer<WrappedCompletableFuture> risposteHTTP;
     private Buffer<WrappedHTTPRequest> richiesteHTTP;
     private Buffer<ByteAndDestination> codaOutput;
     private exec_setting rate;
-    private int allComponentsHaveBeenSetup = 0;
+    private int currentWorkRate;
 
     public enum exec_setting {SLOW, FAST, VERY_FAST, MAX}
 
+    final static float version = 2.1f;
 
-    private static Hydrator instance;
-
-    public static synchronized Hydrator getInstance() {
-        if (instance == null)
-            instance = new Hydrator();
-        return instance;
+    public int getCurrentWorkRate() {
+        return currentWorkRate;
     }
 
-    private Hydrator() {
-
+    public void setCurrentWorkRate(int r) {
+        currentWorkRate = r;
     }
 
-
-    public Hydrator setLogPath(String logPath) {
+    public void setLogPath(String logPath) {
         this.LOG_PATH = logPath;
-        allComponentsHaveBeenSetup++;
-        return instance;
     }
 
-    public Hydrator setSavePath(String savePath) {
+    public void setSavePath(String savePath) {
+        if (savePath.charAt(savePath.length() - 1) != System.getProperty("file.separator").charAt(0))
+            savePath += System.getProperty("file.separator");
         this.pathSalvataggio = savePath;
-        allComponentsHaveBeenSetup++;
-        return instance;
+
     }
 
-    public Hydrator setTokens(String pathToAccountsXML) throws IOException, Key.UnusableKeyException {
+    public void setTokens(String pathToAccountsXML) {
         this.tokens = loadAllTokens(pathToAccountsXML);
-        allComponentsHaveBeenSetup++;
-        return instance;
     }
 
-    public Hydrator setFileList(String pathToFileListOrDirectory) throws IOException {
+    int getFileListSize() {
+        return tweetIdFiles.size();
+    }
+
+    public void setFileList(String pathToFileListOrDirectory) throws IOException {
         this.tweetIdFiles = loadFiles(new File(pathToFileListOrDirectory));
-        allComponentsHaveBeenSetup++;
-        return instance;
     }
 
-    public Hydrator setRate(exec_setting value) {
+    public void setRate(exec_setting value) {
         this.rate = value;
-        allComponentsHaveBeenSetup++;
-        return instance;
     }
 
-    public Hydrator setLogConfigFile(String logToConfigFile) {
-        this.logConfLocation = logToConfigFile;
-        allComponentsHaveBeenSetup++;
-        return instance;
-    }
 
     private void tryToRestoreFromLog(File restoreFrom) throws IOException {
-        BufferedReader br = new BufferedReader(new FileReader(restoreFrom));
-        ArrayList<File> toRemove = new ArrayList<>();
-        try {
+        try (BufferedReader br = new BufferedReader(new FileReader(restoreFrom))) {
+            ArrayList<File> toRemove = new ArrayList<>();
             String line = "";
             StringTokenizer st;
             while ((line = br.readLine()) != null) {
                 st = new StringTokenizer(line, "$");
-                if (st.countTokens() < 2) logger.warn("Restore from log aborted,file structure unknown");
+                if (st.countTokens() < 2) logger.warn("Attempt to restore from logs aborted,file structure unknown");
                 st.nextToken();
                 line = (st.nextToken().trim().replaceAll("\\.json\\.gz", ".txt"));
                 String finalLine = line;
@@ -102,16 +90,14 @@ public class Hydrator {
                 tweetIdFiles.remove(file);
                 logger.warn("[Removed " + file.getName() + " from the work queue][Reason : already processed]");
             });
-        } finally {
-            br.close();
         }
     }
 
 
     private void init() {
-        if (allComponentsHaveBeenSetup != 6)
-            throw new IllegalStateException("Finish configuring the hydrator");
         System.setProperty("log4j.configurationFile", logConfLocation);
+        if (LOG_PATH == null)
+            LOG_PATH = System.getProperty("java.io.tmpdir");
         System.setProperty("log4j_logPath", LOG_PATH);
         org.apache.logging.log4j.core.LoggerContext ctx =
                 (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
@@ -138,10 +124,11 @@ public class Hydrator {
         supplier = new RequestsSupplier(tokens, richiesteHTTP);
         ioHandler = new IOHandler(codaOutput, tweetIdFiles.size());
         parser = new ResponseParserParallel(executor, risposteHTTP, codaOutput, LOG_PATH, new orgJsonParsingStrategy());
+        GraphicModule.INSTANCE.waitForSetup.release();
     }
 
     void setStartTime(int fileIndex) {
-        timeElapsed.put(fileIndex,System.currentTimeMillis() );
+        timeElapsed.put(fileIndex, System.currentTimeMillis());
     }
 
     long setTime(int fileIndex) {
@@ -182,20 +169,17 @@ public class Hydrator {
                 logger.trace(Arrays.toString(e.getStackTrace()));
             }
         }
-        allComponentsHaveBeenSetup = 0;
+
     }
 
+    boolean isSetup() {
+        return tweetIdFiles != null && pathSalvataggio != null && tokens != null && rate != null;
+    }
 
-    public static void main(String... args) throws Exception {
-        if (args.length != 6) {
-            System.out.println("Not enough arguments:" + Arrays.toString(args));
-            System.out.println("Use : fileId tokensFile logFolder saveFolder config.xmlPath parsingVelocity");
-            System.out.println("Values for velocity : " + Arrays.toString(exec_setting.values()));
-            System.out.println("[Use slow if you have less than 10 keys]");
-            System.out.println("[Disclaimer -> fast will probably result in a lot of timeouts at first]");
-            return;
-        }
-        getInstance().setFileList(args[0]).setTokens(args[1]).setLogPath(args[2]).setSavePath(args[3])
-                .setLogConfigFile(args[4]).setRate(exec_setting.valueOf(args[5])).hydrate();
+    public static void main(String... args) {
+        //reference per effeture il loading delle enum
+        System.out.println("Hydrator starting");
+        Object x = GraphicModule.INSTANCE;
+        Object y = Hydrator.INSTANCE;
     }
 }

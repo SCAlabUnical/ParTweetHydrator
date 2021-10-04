@@ -1,5 +1,6 @@
 package utils;
 
+import lightweightVersion.Hydrator;
 import lightweightVersion.Key;
 
 import org.w3c.dom.Document;
@@ -81,23 +82,23 @@ public final class utils {
 
     private static void checkSubFoldersRecursively(ArrayList<File> tweets, File file) {
         File[] files = file.listFiles();
-        if(files == null) return;
+        if (files == null) return;
         Arrays.stream(files).forEach(f -> {
-            if(!f.isDirectory() && f.getName().matches(".*\\.txt")){
+            if (!f.isDirectory() && f.getName().matches(".*\\.txt")) {
                 tweets.add(f);
-            } else checkSubFoldersRecursively(tweets,f);
+            } else checkSubFoldersRecursively(tweets, f);
         });
     }
 
     public static List<File> loadFiles(File inputPath) throws IOException {
         if (inputPath.isDirectory()) {
             ArrayList<File> tweets = new ArrayList<>();
-            checkSubFoldersRecursively(tweets,inputPath);
+            checkSubFoldersRecursively(tweets, inputPath);
             if (tweets.size() == 0)
                 throw new IOException("Bad directory specified");
             return tweets;
         }
-        if(inputPath.isFile()) return Collections.singletonList(inputPath);
+        if (inputPath.isFile()) return Collections.singletonList(inputPath);
         BufferedReader br = new BufferedReader(new FileReader(inputPath));
         try {
             String line = "";
@@ -123,7 +124,7 @@ public final class utils {
     }
 
 
-    public static Key[] loadAllTokens(String XMLPATH) throws Key.UnusableKeyException, IOException {
+    public static Key[] loadAllTokens(String XMLPATH) {
         ArrayList<Key> tokens = new ArrayList<>(100);
         try {
             int bearer = 0, oauth1 = 0;
@@ -148,10 +149,11 @@ public final class utils {
                 tokens.add(new Key(Arrays.copyOf(oauthValues, oauthValues.length)));
             }
             System.out.println("Per ogni finestra di 15 minuti è possibile idratare " + (bearer * 300 + oauth1 * 900) * 100 + " tweet");
-        } catch (SAXException | ParserConfigurationException | XPathExpressionException e) {
-            throw new IOException("File structure not valid,check github for a fac-simile");
+            Hydrator.INSTANCE.setCurrentWorkRate((bearer * 300 + oauth1 * 900) * 100);
+        } catch (SAXException | ParserConfigurationException | XPathExpressionException | IOException | Key.UnusableKeyException e) {
+            throw new RuntimeException("File structure not valid,check github for a fac-simile");
         }
-        Collections.sort(tokens, Key::compareTo);
+        tokens.sort(Key::compareTo);
         return tokens.toArray(new Key[0]);
     }
 

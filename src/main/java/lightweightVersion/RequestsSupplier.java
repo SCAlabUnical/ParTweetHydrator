@@ -70,7 +70,7 @@ public final class RequestsSupplier extends Thread {
             try {
                 kit = worksetQueue.get();
                 if(file!=kit.fileIndex())
-                    Hydrator.getInstance().setStartTime(kit.fileIndex());
+                    Hydrator.INSTANCE.setStartTime(kit.fileIndex());
                 file = kit.fileIndex();
                 idWorkset = kit.ids();
                 reqTarget = (int) Math.ceil((double) idWorkset.size() / 100);

@@ -36,8 +36,6 @@ public final class Key implements Comparable<Key> {
 
     private enum KeyType {BEARER, OAUTH1}
 
-    ;
-
     private final static AtomicInteger instanceTracker = new AtomicInteger(0);
     private final int id = instanceTracker.incrementAndGet();
     private final KeyType type;
@@ -174,7 +172,6 @@ public final class Key implements Comparable<Key> {
             }
         } catch (IOException | InterruptedException e) {
             logger.fatal(e.getMessage());
-            ;
             throw new RuntimeException("Unable to validate key,check your connection");
         } catch (RuntimeException e) {
             throw new UnusableKeyException(e.getMessage());

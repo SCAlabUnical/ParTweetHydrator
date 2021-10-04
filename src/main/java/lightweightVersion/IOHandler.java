@@ -15,7 +15,7 @@ public class IOHandler implements Runnable {
     private GZIPOutputStream currentCompressedStream;
     private BufferedOutputStream currentOutput;
     private int risposte = 0, fileCounter = 0, fileIndex = Integer.MIN_VALUE;
-    private long[] acks, targetPerFile;
+    long[] acks, targetPerFile;
     private final Buffer<ByteAndDestination> buffer;
     private OutputStream[][] fileStreams;
 
@@ -43,11 +43,12 @@ public class IOHandler implements Runnable {
                 start = System.currentTimeMillis();
                 if (curr.fileIndex() != fileIndex) {
                     fileIndex = curr.fileIndex();
+                    GraphicModule.INSTANCE.updateCurrentFile(fileIndex, (int) acks[fileIndex], (int) targetPerFile[fileIndex]);
                     assert targetPerFile[fileIndex] > 0;
                     currentTarget = targetPerFile[fileIndex];
                     if (fileStreams[fileIndex] == null) {
                         streams = new OutputStream[2];
-                        streams[0] = new BufferedOutputStream(new FileOutputStream(Hydrator.getInstance().getOutputFile(fileIndex), false));
+                        streams[0] = new BufferedOutputStream(new FileOutputStream(Hydrator.INSTANCE.getOutputFile(fileIndex), false));
                         streams[1] = new GZIPOutputStream(streams[0]);
                         fileStreams[fileIndex] = streams;
                     }
@@ -62,22 +63,24 @@ public class IOHandler implements Runnable {
             } catch (InterruptedException | IOException e) {
                 System.out.println("ERRORE I/O");
             } finally {
-                if (acks[fileIndex] == currentTarget)
+                if (acks[fileIndex] == currentTarget) {
+                    GraphicModule.INSTANCE.fileDone(fileIndex);
                     try {
-                        completionLogger.log(Level.forName("COMPLETED", 650), " $ " + Hydrator.getInstance().getOutputFile(fileIndex).getName() + " $ [Time elapsed : " + Hydrator.getInstance().setTime(fileIndex)+" ms]");
+                        completionLogger.log(Level.forName("COMPLETED", 650), " $ " + Hydrator.INSTANCE.getOutputFile(fileIndex).getName() + " $ [Time elapsed : " + Hydrator.INSTANCE.setTime(fileIndex) + " ms]");
                         currentCompressedStream.flush();
                         currentCompressedStream.close();
                         currentOutput.flush();
                         currentOutput.close();
                         fileStreams[fileIndex] = null;
-                        if(!Hydrator.getInstance().areThereMore(fileIndex+1)) {
-                            completionLogger.log(Level.forName("FINISHED",700),"Rehydrated everything,exiting");
+                        if (!Hydrator.INSTANCE.areThereMore(fileIndex + 1)) {
+                            completionLogger.log(Level.forName("FINISHED", 700), "Rehydrated everything,exiting");
                             System.exit(0);
                         }
                     } catch (Exception e) {
                         logger.fatal(e.getMessage());
                         System.out.println(e.getMessage());
                     }
+                }
 
             }
         }
