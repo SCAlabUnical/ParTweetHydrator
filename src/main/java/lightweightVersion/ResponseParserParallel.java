@@ -3,19 +3,15 @@ package lightweightVersion;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.JSONArray;
 import utils.ParsingStrategy;
 
 
 import java.io.*;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class ResponseParserParallel {
@@ -28,7 +24,7 @@ public class ResponseParserParallel {
     private Buffer<ByteAndDestination> queueToFile;
     private final String logPath;
     private final RequestExecutor executor;
-    private final AtomicInteger tweets = new AtomicInteger(0);
+
     private long notificationExpireTimestap = Long.MAX_VALUE;
     private final ParsingStrategy parsingStrategy;
 
@@ -44,7 +40,7 @@ public class ResponseParserParallel {
     public void startWorkers() {
         ExecutorService executorService = Executors.newCachedThreadPool();
         for (int i = 0; i < PARSER_POOL; i++)
-            executorService.execute(new parser(i));
+            executorService.execute(new Parser(i));
 
     }
 
@@ -53,10 +49,10 @@ public class ResponseParserParallel {
     }
 
 
-    class parser implements Runnable {
+    class Parser implements Runnable {
         private final int index;
 
-        public parser(int index) {
+        public Parser(int index) {
             this.index = index;
         }
 
@@ -93,7 +89,7 @@ public class ResponseParserParallel {
                     if (!err[0]) {
                         if (response.statusCode() == 200) {
                             queueToFile.put(new ByteAndDestination(parsingStrategy.parse(response.body()), currentItem.fileIndex(), currentItem.packetNumber()));
-                            logger.info("[Response n° " + currentItem.packetNumber() + " received] + [Status : " + response.statusCode() + "]");
+                            logger.info("[Response n° " + currentItem.packetNumber() + " received]  [Status : " + response.statusCode() + "]");
                         } else {
                             logger.warn("Timing out executor " + this.index);
                             executor.timeout(response.statusCode(),false);

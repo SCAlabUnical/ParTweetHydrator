@@ -4,6 +4,9 @@ package lightweightVersion;
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -77,7 +80,11 @@ public class Callbacks {
                 KeysPanel p = new KeysPanel();
                 Hydrator.INSTANCE.setTokens(path);
                 p.done();
-                GraphicModule.INSTANCE.workRate.setText("Current work rate : " + Hydrator.INSTANCE.getCurrentWorkRate()+  " tweets/15 minutes");
+                NumberFormat nf = NumberFormat.getNumberInstance(Locale.ITALIAN);
+                DecimalFormat df = (DecimalFormat) nf;
+
+                GraphicModule.INSTANCE.workRate.setText("Current work rate : " + df.format(Hydrator.INSTANCE.getCurrentWorkRate())
+                +" tweets/15 minutes");
             });
         }
     }

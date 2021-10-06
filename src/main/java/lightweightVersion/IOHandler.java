@@ -14,8 +14,8 @@ public class IOHandler implements Runnable {
     private Logger completionLogger = LogManager.getLogger("completionTracker");
     private GZIPOutputStream currentCompressedStream;
     private BufferedOutputStream currentOutput;
-    private int risposte = 0, fileCounter = 0, fileIndex = Integer.MIN_VALUE;
-    long[] acks, targetPerFile;
+    private int risposte = 0, fileCounter = 0, fileIndex = -1;
+    private long[] acks, targetPerFile;
     private final Buffer<ByteAndDestination> buffer;
     private OutputStream[][] fileStreams;
 
@@ -32,6 +32,9 @@ public class IOHandler implements Runnable {
         targetPerFile[file] = (((long) target * (target - 1)) / 2);
     }
 
+    long getCurrentAcks() {
+        return fileIndex >= 0 ? acks[fileIndex] : 0L;
+    }
 
     public void run() {
         ByteAndDestination curr;
@@ -44,7 +47,6 @@ public class IOHandler implements Runnable {
                 if (curr.fileIndex() != fileIndex) {
                     fileIndex = curr.fileIndex();
                     GraphicModule.INSTANCE.updateCurrentFile(fileIndex, (int) acks[fileIndex], (int) targetPerFile[fileIndex]);
-                    assert targetPerFile[fileIndex] > 0;
                     currentTarget = targetPerFile[fileIndex];
                     if (fileStreams[fileIndex] == null) {
                         streams = new OutputStream[2];
@@ -64,6 +66,7 @@ public class IOHandler implements Runnable {
                 System.out.println("ERRORE I/O");
             } finally {
                 if (acks[fileIndex] == currentTarget) {
+                    Hydrator.INSTANCE.fileCompleted();
                     GraphicModule.INSTANCE.fileDone(fileIndex);
                     try {
                         completionLogger.log(Level.forName("COMPLETED", 650), " $ " + Hydrator.INSTANCE.getOutputFile(fileIndex).getName() + " $ [Time elapsed : " + Hydrator.INSTANCE.setTime(fileIndex) + " ms]");

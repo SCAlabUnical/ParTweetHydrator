@@ -7,6 +7,7 @@ import utils.orgJsonParsingStrategy;
 
 
 import java.io.*;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -22,7 +23,7 @@ public enum Hydrator {
     private Key[] tokens;
     private List<File> tweetIdFiles, rehydratedFiles;
     private HashMap<Integer, Long> timeElapsed = new HashMap<>();
-    private String LOG_PATH, pathSalvataggio, logConfLocation = "logger_conf.xml";
+    private String LOG_PATH, pathSalvataggio;
     private ResponseParserParallel parser;
     private RequestExecutor executor;
     private RequestsSupplier supplier;
@@ -32,6 +33,20 @@ public enum Hydrator {
     private Buffer<ByteAndDestination> codaOutput;
     private exec_setting rate;
     private int currentWorkRate;
+    private int completedFiles = 0;
+    private boolean isRunning = false;
+
+    boolean isRunning() {
+        return isRunning;
+    }
+
+    synchronized void fileCompleted() {
+        completedFiles++;
+    }
+
+    int getCompletedFiles() {
+        return completedFiles;
+    }
 
     public enum exec_setting {SLOW, FAST, VERY_FAST, MAX}
 
@@ -87,6 +102,7 @@ public enum Hydrator {
                 tweetIdFiles.stream().filter(file -> file.getName().equals(finalLine)).forEach(toRemove::add);
             }
             toRemove.forEach(file -> {
+                completedFiles++;
                 tweetIdFiles.remove(file);
                 logger.warn("[Removed " + file.getName() + " from the work queue][Reason : already processed]");
             });
@@ -95,12 +111,17 @@ public enum Hydrator {
 
 
     private void init() {
-        System.setProperty("log4j.configurationFile", logConfLocation);
+        ClassLoader classLoader = Hydrator.INSTANCE.getClass().getClassLoader();
         if (LOG_PATH == null)
             LOG_PATH = System.getProperty("java.io.tmpdir");
         System.setProperty("log4j_logPath", LOG_PATH);
         org.apache.logging.log4j.core.LoggerContext ctx =
                 (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
+        try {
+            ctx.setConfigLocation(classLoader.getResource("logger_conf.xml").toURI());
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
         ctx.reconfigure();
         int buffer_sizes = (int) Math.pow(10, (rate.ordinal() + 2));
         risposteHTTP = new Buffer<>(buffer_sizes, "risposteHTTP");
@@ -146,6 +167,7 @@ public enum Hydrator {
     }
 
     public void hydrate() {
+        isRunning = true;
         this.init();
         ExecutorService executorService = Executors.newFixedThreadPool(3);
         parser.attachHandler(supplier);
@@ -169,7 +191,7 @@ public enum Hydrator {
                 logger.trace(Arrays.toString(e.getStackTrace()));
             }
         }
-
+        isRunning = false;
     }
 
     boolean isSetup() {

@@ -15,11 +15,9 @@ public enum GraphicModule {
     INSTANCE;
     private final JFrame mainFrame;
     JProgressBar totalWorkToDo, currentFileProgress;
-    private JLabel currentFile;
-    private int currentFileIndex = 0;
+    private final JLabel currentFile;
     //overkill
     Semaphore waitForSetup = new Semaphore(0);
-    private Set<Integer> completedFiles = new HashSet<>();
     JLabel completed = new JLabel(""), total = new JLabel(""), workRate;
 
     private static class ChooserPanel extends JPanel {
@@ -53,7 +51,6 @@ public enum GraphicModule {
     }
 
     void updateCurrentFile(int index, int val, int requiredAcks) {
-        currentFileIndex = index;
         currentFile.setText("Current file : " + Hydrator.INSTANCE.getOutputFile(index).getName());
         currentFileProgress.setMaximum(requiredAcks);
         currentFileProgress.setValue(val);
@@ -61,8 +58,7 @@ public enum GraphicModule {
 
 
     void fileDone(int index) {
-        completedFiles.add(index);
-        completed.setText(completedFiles.size() + "");
+        completed.setText(Hydrator.INSTANCE.getCompletedFiles() + "");
         totalWorkToDo.setValue(totalWorkToDo.getValue() + 1);
     }
 
@@ -120,7 +116,7 @@ public enum GraphicModule {
             try {
                 waitForSetup.acquire();
                 while (true) {
-                    currentFileProgress.setValue((int) Hydrator.INSTANCE.ioHandler.acks[currentFileIndex]);
+                    currentFileProgress.setValue((int) Hydrator.INSTANCE.ioHandler.getCurrentAcks());
                     Thread.sleep(350);
                 }
             } catch (InterruptedException e) {
@@ -133,6 +129,7 @@ public enum GraphicModule {
                 JOptionPane.showMessageDialog(mainFrame, "Select a save folder,an input folder,a file containing the auth tokens and a rate", "Setup Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
+            if (Hydrator.INSTANCE.isRunning()) return;
             service.execute(Hydrator.INSTANCE::hydrate);
             service.execute(task);
         });

@@ -17,7 +17,27 @@ Time Elapsed
 
 File Sample Size in tweet ids - ParTweetHydrator - Twarc    - 	 Hydrator (JS) 
 
-	1.000  			   		  - 1177 ms          - 0m5,980s 	   TBT
-	10.000                    - 7622 ms          - 0m54,807s	   TBT
-	100.000                   - 77057 ms         - 9m8,879s        TBT
-	1.000.000                 - 710325 ms        - 167m50,344s     TBT
+	1.000  			   		   - 1177 ms          - 0m5,980s       - 6,35s
+	10.000                     - 7622 ms          - 0m54,807s	   - 1m11,12s
+	100.000                    - 77057 ms         - 9m8,879s       - 16m18,26s
+	1.000.000                  - 710325 ms        - 167m50,344s    - 2hrs47m30,59s
+
+	In secondi :
+                               - 1,177  s          - 0m5,980s       - 6,35s
+	                           - 7,622  s          - 0m54,807s	    - 71.12s
+                               - 77,057 s         -  548.879s       - 978.26s
+                               - 710,325 s        -  10070.344s     - 10050.59s
+
+    Comparison : ParTweetHydrator vs Hydrator(JS)
+    Sample size   Time delta
+    1000          + 539.5%
+    10000         + 933.08%
+    100000        + 1269.53%
+    1000000       + 1414.98%
+
+ Comparison : ParTweetHydrator vs Twarc
+    Sample size   Time delta
+    1000          + 508.08%
+    10000         + 719.06%
+    100000        + 721.67%
+    1000000       + 1417.72%

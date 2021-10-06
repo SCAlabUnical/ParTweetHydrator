@@ -32,7 +32,7 @@ public final class Buffer<T> {
                     logger.trace("<Buffer filled at : " + instances.get(i).size + "/" + instances.get(i).buffer.length + " name " + instances.get(i).stringId + " >");
                 logger.trace("");
             } catch (InterruptedException e) {
-
+                System.out.println("Tracker shutting down..");
             }
         }
     };
