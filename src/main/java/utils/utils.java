@@ -1,13 +1,5 @@
 package utils;
 
-import lightweightVersion.Hydrator;
-import lightweightVersion.Key;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
 import java.io.*;
 import java.net.URI;
 
@@ -16,13 +8,6 @@ import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
 
 public final class utils {
     public final static String[] API_ENDPOINTS = {"https://api.twitter.com/1.1", "https://api.twitter.com/2"};
@@ -86,7 +71,7 @@ public final class utils {
         Arrays.stream(files).forEach(f -> {
             if (!f.isDirectory() && f.getName().matches(".*\\.txt")) {
                 tweets.add(f);
-            } else checkSubFoldersRecursively(tweets, f);
+            } else if (f.isDirectory()) checkSubFoldersRecursively(tweets, f);
         });
     }
 
@@ -121,40 +106,6 @@ public final class utils {
         for (Long x : ids)
             sb.append(x).append(",");
         return URI.create(sb.deleteCharAt(sb.length() - 1).append("&tweet_mode=extended").toString());
-    }
-
-
-    public static Key[] loadAllTokens(String XMLPATH) {
-        ArrayList<Key> tokens = new ArrayList<>(100);
-        try {
-            int bearer = 0, oauth1 = 0;
-            Document xmlDocument = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new File(XMLPATH));
-            String expr = "//BearerToken/text()";
-            XPath xPath = XPathFactory.newInstance().newXPath();
-            NodeList nodeList = (NodeList) xPath.evaluate(expr, xmlDocument, XPathConstants.NODESET);
-            System.out.println("Recuperati " + (bearer = nodeList.getLength()) + " bearer token da " + XMLPATH);
-            for (int i = 0; i < nodeList.getLength(); i++)
-                tokens.add(new Key("Bearer " + nodeList.item(i).getNodeValue().trim()));
-            expr = "//Progetto";
-            xPath = XPathFactory.newInstance().newXPath();
-            nodeList = (NodeList) xPath.evaluate(expr, xmlDocument, XPathConstants.NODESET);
-            System.out.println("Recuperati " + (oauth1 = nodeList.getLength()) + " oauth1 token da " + XMLPATH);
-            for (int i = 0; i < nodeList.getLength(); i++) {
-                Node project = nodeList.item(i);
-                String[] oauthValues = new String[oauth_1_fields.length];
-                for (int j = 0; j < oauthValues.length; j++) {
-                    xPath = XPathFactory.newInstance().newXPath();
-                    oauthValues[j] = ((String) xPath.evaluate(("./" + oauth_1_fields[j] + "/text()"), project, XPathConstants.STRING)).trim();
-                }
-                tokens.add(new Key(Arrays.copyOf(oauthValues, oauthValues.length)));
-            }
-            System.out.println("Per ogni finestra di 15 minuti è possibile idratare " + (bearer * 300 + oauth1 * 900) * 100 + " tweet");
-            Hydrator.INSTANCE.setCurrentWorkRate((bearer * 300 + oauth1 * 900) * 100);
-        } catch (SAXException | ParserConfigurationException | XPathExpressionException | IOException | Key.UnusableKeyException e) {
-            throw new RuntimeException("File structure not valid,check github for a fac-simile");
-        }
-        tokens.sort(Key::compareTo);
-        return tokens.toArray(new Key[0]);
     }
 
 

@@ -1,7 +1,7 @@
 package deprecated;
 
-import lightweightVersion.Buffer;
-import lightweightVersion.WrappedHTTPRequest;
+import dataStructures.Buffer;
+import dataStructures.WrappedHTTPRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

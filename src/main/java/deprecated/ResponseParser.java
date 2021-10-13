@@ -41,7 +41,7 @@ public class ResponseParser extends Thread {
         int endIndex, beginIndex = 0;
         char c, peek;
         String x;
-        WrappedCompletableFuture future;
+        WrappedCompletableFuture futureResponse;
         HttpResponse<String> answer;
         while (!this.isInterrupted()) {
             try {
@@ -55,8 +55,8 @@ public class ResponseParser extends Thread {
                     System.out.println("Opening GZIP stream");
                 }
                 while (okResponsesReceived != responseTarget) {
-                    future = sentRequests.get();
-                    answer = future.future().join();
+                    futureResponse = sentRequests.get();
+                    answer = futureResponse.futureResponse().join();
                     received++;
                     logger.println("[Response n° " + (received) + " + received][Ack :  " + okResponsesReceived + "]" + "[Status : " + answer.statusCode() + "]" +
                             "[Limit :" + utils.checkLimits(answer) + "]");
@@ -66,7 +66,7 @@ public class ResponseParser extends Thread {
                         if (n429 == 5)
                             System.exit(-1);
                         if (handler != null)
-                            handler.put(future.request());
+                            handler.put(futureResponse.request());
                         else System.out.println("Request lost due to missing handler");
                         continue;
                     } else okResponsesReceived++;
