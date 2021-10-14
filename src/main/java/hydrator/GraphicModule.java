@@ -1,10 +1,15 @@
 package hydrator;
 
+import utils.graphicsUtilities.DummyTimer;
+import utils.graphicsUtilities.RoundedBorder;
+
 import javax.swing.*;
-import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -18,7 +23,8 @@ public enum GraphicModule {
     //overkill
     StatusPanel statusPanel;
     Semaphore waitForSetup = new Semaphore(0);
-    JLabel completed = new JLabel(""), total = new JLabel(""), workRate,currentTweets = new JLabel("0"),requestsSent = new JLabel("0");
+    JLabel completed = new JLabel(""), total = new JLabel(""), workRate, currentTweets = new JLabel( ), requestsSent = new JLabel( );
+
 
     private static class ChooserPanel extends JPanel {
         JLabel mid;
@@ -63,6 +69,9 @@ public enum GraphicModule {
     }
 
     GraphicModule() {
+        requestsSent.setToolTipText("Tweets Rehydrated/Requests Sent/IDs loaded");
+        NumberFormat nf = NumberFormat.getNumberInstance(Locale.ITALIAN);
+        DecimalFormat df = (DecimalFormat) nf;
         mainFrame = new JFrame();
         mainFrame.setSize(new Dimension(550, 870));
         mainFrame.setTitle("Hydrator v" + Hydrator.version);
@@ -110,7 +119,7 @@ public enum GraphicModule {
         left.add(new JLabel("Completed files : "));
         left.add(completed);
         left.add(total);
-        right.add(new JLabel("Rehydrated Tweets"));
+        right.add(new JLabel("Rehydrated Tweets : "));
         right.add(currentTweets);
         right.add(requestsSent);
         completedFilesCount.add(left);
@@ -122,10 +131,12 @@ public enum GraphicModule {
         Runnable task = () -> {
             try {
                 waitForSetup.acquire();
+                statusPanel.dummyTimer.start();
                 while (true) {
                     currentFileProgress.setValue((int) Hydrator.INSTANCE.ioHandler.getCurrentAcks());
-                    currentTweets.setText(ResponseParser.getRehydratedTweets()+"");
-                    requestsSent.setText("/" + Hydrator.INSTANCE.executor.getRequests()*100);
+                    currentTweets.setText(df.format(ResponseParser.getRehydratedTweets()));
+                    requestsSent.setText("/" + df.format(Hydrator.INSTANCE.executor.getRequests()) + "/" + df.format(Hydrator.INSTANCE.supplier.getTotalTweets()));
+                    statusPanel.dummyTimer.updateGUI();
                     Thread.sleep(150);
                 }
             } catch (InterruptedException e) {
@@ -138,9 +149,24 @@ public enum GraphicModule {
                 JOptionPane.showMessageDialog(mainFrame, "Select a save folder,an input folder,a file containing the auth tokens and a rate", "Setup Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            if (Hydrator.INSTANCE.isRunning()) return;
-            service.execute(Hydrator.INSTANCE::hydrate);
-            service.execute(task);
+            if (Hydrator.INSTANCE.isRunning()) {
+                try {
+                    if (!Hydrator.INSTANCE.executor.isPaused())
+                        Hydrator.INSTANCE.executor.pauseExecutor();
+                    else Hydrator.INSTANCE.executor.resumeWork();
+                    statusPanel.currentState = Hydrator.INSTANCE.executor.isPaused() ? StatusPanel.state.PAUSED : StatusPanel.state.HYDRATING;
+                    statusPanel.revalidate();
+                } catch (InterruptedException e) {
+                    Hydrator.INSTANCE.executor.resumeWork();
+                    System.out.println("Failed to pause the executor");
+                    System.out.println(e);
+                }
+            }
+            if (!Hydrator.INSTANCE.isRunning()) {
+                service.execute(Hydrator.INSTANCE::hydrate);
+                statusPanel.dummyTimer.start();
+                service.execute(task);
+            }
         });
         JPanel buttonHolder = new JPanel();
         buttonHolder.add(hydrate);
@@ -159,44 +185,25 @@ public enum GraphicModule {
 
 
     static class StatusPanel extends JPanel {
-        private enum state {STOPPED, HYDRATING, WAITING_FOR_WINDOW_RESET, TIMED_OUT}
+        private enum state {STOPPED, HYDRATING, WAITING_FOR_WINDOW_RESET, TIMED_OUT, PAUSED}
 
-        private JButton visualIndicator;
+        private JButton visualIndicator, timerButton;
         private state currentState = state.STOPPED;
+        private DummyTimer dummyTimer = new DummyTimer();
 
-        private static class RoundedBorder implements Border {
-
-            private int radius;
-
-
-            RoundedBorder(int radius) {
-                this.radius = radius;
-            }
-
-
-            public Insets getBorderInsets(Component c) {
-                return new Insets(this.radius + 1, this.radius + 1, this.radius + 2, this.radius);
-            }
-
-
-            public boolean isBorderOpaque() {
-                return true;
-            }
-
-
-            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-                g.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
-            }
-        }
 
         StatusPanel() {
-            super(new GridLayout(0, 3));
+            super();
+            setLayout(new GridLayout(1, 4));
             add(new JLabel("Current status: "));
+            timerButton = new JButton();
             visualIndicator = new JButton(currentState.toString());
             visualIndicator.setBounds(15, 15, 15, 15);
             visualIndicator.setBorder(new RoundedBorder(8)); //10 is the radius
             visualIndicator.setForeground(Color.RED);
             add(visualIndicator);
+            add(new JLabel(""));
+            add(dummyTimer.getGUI());
         }
 
         void timeOut() {

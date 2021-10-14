@@ -18,10 +18,9 @@ import java.util.concurrent.TimeUnit;
 public final class RequestsSupplier extends Thread {
     private static final Logger logger = LogManager.getLogger(RequestsSupplier.class.getName());
     private final Buffer<WrappedHTTPRequest> buffer;
-    private int shift = 0;
-    private int key = 0;
-    private int requestsPerSingleFile = 0;
+    private int shift = 0, key = 0, requestsPerSingleFile = 0;
     private final int numberOfKeys;
+    private long ids = 0;
     private Long[] timers;
     private final AbstractKey[] keys;
     private final Buffer<WorkKit> worksetQueue = new Buffer<>(5, "idFiles");
@@ -37,7 +36,10 @@ public final class RequestsSupplier extends Thread {
         timers = new Long[numberOfKeys];
     }
 
-    /*synchronized*/
+    public long getTotalTweets() {
+        return ids;
+    }
+
     public void addRequestToRepeat(WrappedHTTPRequest request) {
         requestsToRepeat.push(request);
     }
@@ -79,8 +81,10 @@ public final class RequestsSupplier extends Thread {
         while (!this.isInterrupted()) {
             try {
                 kit = worksetQueue.get();
-                if (file != kit.fileIndex())
+                if (file != kit.fileIndex()) {
                     Hydrator.INSTANCE.setStartTime(kit.fileIndex());
+                    ids += kit.ids().size();
+                }
                 file = kit.fileIndex();
                 idWorkset = kit.ids();
                 reqTarget = (int) Math.ceil((double) idWorkset.size() / 100);

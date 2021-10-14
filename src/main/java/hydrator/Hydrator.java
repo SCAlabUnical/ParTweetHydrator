@@ -39,8 +39,8 @@ public enum Hydrator {
     private HashMap<Integer, Long> timeElapsed = new HashMap<>();
     private String LOG_PATH, pathSalvataggio;
     private ResponseParser parser;
-     RequestExecutor executor;
-    private RequestsSupplier supplier;
+    RequestExecutor executor;
+    RequestsSupplier supplier;
     IOHandler ioHandler;
     private Buffer<WrappedCompletableFuture> risposteHTTP;
     private Buffer<WrappedHTTPRequest> richiesteHTTP;
@@ -64,7 +64,7 @@ public enum Hydrator {
 
     public enum exec_setting {SLOW, FAST, VERY_FAST}
 
-    final static float version = 2.1f;
+    final static float version = 2.2f;
 
     public int getCurrentWorkRate() {
         return currentWorkRate;
@@ -109,7 +109,7 @@ public enum Hydrator {
             expr = "//Progetto";
             xPath = XPathFactory.newInstance().newXPath();
             nodeList = (NodeList) xPath.evaluate(expr, xmlDocument, XPathConstants.NODESET);
-            System.out.println("Found " + (oauth1 = nodeList.getLength()) + "sets of  oauth1 tokes in " + XMLPATH);
+            System.out.println("Found " + (oauth1 = nodeList.getLength()) + " sets of  oauth1 tokes in " + XMLPATH);
             for (int i = 0; i < nodeList.getLength(); i++) {
                 Node project = nodeList.item(i);
                 String[] oauthValues = new String[oauth_1_fields.length];
@@ -128,7 +128,7 @@ public enum Hydrator {
         } catch (SAXException | ParserConfigurationException | XPathExpressionException | IOException e) {
             throw new RuntimeException("File structure invalid,check github for a fac-simile");
         }
-        Collections.shuffle(tokens,new Random(System.currentTimeMillis()));
+        Collections.shuffle(tokens, new Random(System.currentTimeMillis()));
         return tokens.toArray(new AbstractKey[0]);
     }
 
@@ -201,8 +201,8 @@ public enum Hydrator {
             timeElapsed.put(i, System.currentTimeMillis());
         tweetIdFiles.forEach(file -> rehydratedFiles.add(new File(pathSalvataggio + file.getName().replaceAll("\\.txt", ".json.gz"))));
         rehydratedFiles = Collections.unmodifiableList(rehydratedFiles);
-        executor = new RequestExecutor( risposteHTTP, rate);
-        supplier = new RequestsSupplier(tokens, richiesteHTTP,executor);
+        executor = new RequestExecutor(risposteHTTP, rate);
+        supplier = new RequestsSupplier(tokens, richiesteHTTP, executor);
         ioHandler = new IOHandler(codaOutput, tweetIdFiles.size());
         parser = new ResponseParser(executor, risposteHTTP, codaOutput, LOG_PATH, new orgJsonParsingStrategy());
         GraphicModule.INSTANCE.waitForSetup.release();
@@ -225,6 +225,7 @@ public enum Hydrator {
     File getOutputFile(int index) {
         return rehydratedFiles.get(index);
     }
+
 
     public void hydrate() {
         isRunning = true;

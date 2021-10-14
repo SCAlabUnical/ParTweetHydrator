@@ -120,6 +120,7 @@ public class ResponseParser {
                         errorLogger.error(e[0].getMessage());
                         errorLogger.error(e[0].getCause());
                         errorLogger.error(e[0]);
+                        errorLogger.error(e[0].getLocalizedMessage());
                         err[0] = false;
                         repeat(currentItem.request());
                     }

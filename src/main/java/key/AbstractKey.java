@@ -110,8 +110,7 @@ public abstract class AbstractKey implements Comparable<AbstractKey> {
                 JSONObject statusEndpoint = (JSONObject) ((JSONObject) ((JSONObject) jsonObject.get("resources")).get("statuses")).get("/statuses/lookup");
                 requestsLimitPerWindow = Integer.parseInt(statusEndpoint.get("limit").toString());
                 usesLeft = Integer.parseInt(statusEndpoint.get("remaining").toString());
-                //not reliable anymore
-                //epochResetTime = Long.parseLong(statusEndpoint.get("reset").toString());
+                epochResetTime = Long.parseLong(statusEndpoint.get("reset").toString());
                 System.out.println("Key n° " + id + " uses left : " + usesLeft);
             } else {
                 System.out.println("Key : " + this + " invalid");
