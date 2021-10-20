@@ -20,7 +20,7 @@ public final class RequestExecutor {
     private volatile boolean timeout = false, error = false;
     private int requests = 0, numberOfTimeouts;
     private long normalSleepTime;
-    public HttpClient client;
+    private HttpClient client;
     private Semaphore pauseExecutor = new Semaphore(1);
     private final static Map<Hydrator.exec_setting, Integer>
             sleepRates = Map.of(Hydrator.exec_setting.VERY_FAST, 15, Hydrator.exec_setting.FAST, 10, Hydrator.exec_setting.SLOW, 10),
@@ -110,7 +110,6 @@ public final class RequestExecutor {
     public void pauseExecutor() throws InterruptedException {
         isPaused = true;
         pauseExecutor.acquire();
-        System.out.println("Executor has been paused");
     }
 
     public void resumeWork() {

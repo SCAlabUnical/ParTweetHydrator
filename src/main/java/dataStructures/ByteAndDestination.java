@@ -1,7 +1,7 @@
 package dataStructures;
 
-import java.util.List;
+import java.util.Collection;
 
-public record ByteAndDestination(List<byte[]> array,int fileIndex,int packetN){
+public record ByteAndDestination(Collection<byte[]> array, int fileIndex, int packetN){
 
 }

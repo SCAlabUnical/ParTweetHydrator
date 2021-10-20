@@ -3,12 +3,16 @@ package hydrator;
 
 import dataStructures.Buffer;
 import dataStructures.ByteAndDestination;
+import flyweight.FlyweightFactory;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Condition;
 import java.util.zip.GZIPOutputStream;
 
 public class IOHandler implements Runnable {
@@ -20,6 +24,14 @@ public class IOHandler implements Runnable {
     private long[] acks, targetPerFile;
     private final Buffer<ByteAndDestination> buffer;
     private OutputStream[][] fileStreams;
+    private FlyweightFactory flyweightFactory;
+    private String savePath;
+    private List<File> originals;
+    private ResponseParser parser;
+
+    public void setParser(ResponseParser parser) {
+        this.parser = parser;
+    }
 
     public IOHandler(Buffer<ByteAndDestination> buffer, int files) {
         this.buffer = buffer;
@@ -29,8 +41,27 @@ public class IOHandler implements Runnable {
         Arrays.fill(targetPerFile, -1L);
     }
 
+    public void setSavePath(String savePath) {
+        this.savePath = savePath;
+    }
 
-    void setTargetPerFile(int file, int target) {
+    public IOHandler(Buffer<ByteAndDestination> buffer, int files, FlyweightFactory flyweightFactory) {
+        this.flyweightFactory = flyweightFactory;
+        this.buffer = buffer;
+        this.acks = new long[files];
+        this.targetPerFile = new long[files];
+        this.fileStreams = new OutputStream[files][];
+        Arrays.fill(targetPerFile, -1L);
+    }
+
+
+    public boolean isDone() {
+        for (int i = 0; i < targetPerFile.length; i++)
+            if (acks[i] != targetPerFile[i]) return false;
+        return true;
+    }
+
+    public void setTargetPerFile(int file, int target) {
         targetPerFile[file] = (((long) target * (target - 1)) / 2);
     }
 
@@ -38,21 +69,31 @@ public class IOHandler implements Runnable {
         return fileIndex >= 0 ? acks[fileIndex] : 0L;
     }
 
+    public void setOriginalFileList(List<File> ogs) {
+        originals = ogs;
+    }
+
+    public int[] getCurrentFile() {
+        if (fileIndex < 0) return null;
+        return new int[]{fileIndex, (int) acks[fileIndex], (int) targetPerFile[fileIndex]};
+    }
+
     public void run() {
         ByteAndDestination curr;
         OutputStream[] streams;
         long start, currentTarget = -1L;
-        while (true) {
+        boolean keepGoing = true;
+        while (keepGoing) {
             try {
                 curr = buffer.get();
                 start = System.currentTimeMillis();
                 if (curr.fileIndex() != fileIndex) {
                     fileIndex = curr.fileIndex();
-                    GraphicModule.INSTANCE.updateCurrentFile(fileIndex, (int) acks[fileIndex], (int) targetPerFile[fileIndex]);
+                    //       GraphicModule.INSTANCE.updateCurrentFile(fileIndex, (int) acks[fileIndex], (int) targetPerFile[fileIndex]);
                     currentTarget = targetPerFile[fileIndex];
                     if (fileStreams[fileIndex] == null) {
                         streams = new OutputStream[2];
-                        streams[0] = new BufferedOutputStream(new FileOutputStream(Hydrator.INSTANCE.getOutputFile(fileIndex), false));
+                        streams[0] = new BufferedOutputStream(new FileOutputStream((savePath + originals.get(fileIndex).getName().replaceAll("\\.txt", ".json.gz")), false));
                         streams[1] = new GZIPOutputStream(streams[0]);
                         fileStreams[fileIndex] = streams;
                     }
@@ -63,23 +104,25 @@ public class IOHandler implements Runnable {
                 acks[fileIndex] += curr.packetN();
                 for (byte[] array : curr.array())
                     currentCompressedStream.write(array);
+                if (curr.array() instanceof FlyweightFactory.Flyweight flyweight)
+                    flyweightFactory.usedFlyweight(flyweight);
                 logger.info("[Ack file : " + fileIndex + " n° " + curr.packetN() + " parsed in " + (System.currentTimeMillis() - start) + " ms] [Target " + targetPerFile[fileIndex] + "][Current : " + acks[fileIndex] + "]");
             } catch (InterruptedException | IOException e) {
                 System.out.println("ERRORE I/O");
             } finally {
                 if (acks[fileIndex] == currentTarget) {
-                    Hydrator.INSTANCE.fileCompleted();
-                    GraphicModule.INSTANCE.fileDone();
                     try {
-                        completionLogger.log(Level.forName("COMPLETED", 650), " $ " + Hydrator.INSTANCE.getOutputFile(fileIndex).getName() + " $ [Time elapsed : " + Hydrator.INSTANCE.setTime(fileIndex) + " ms]");
+                        completionLogger.log(Level.forName("COMPLETED", 650), " $ " + (originals.get(fileIndex).getName().replaceAll("\\.txt", ".json.gz")) + " $ [Time elapsed : " + Hydrator.INSTANCE.setTime(fileIndex) + " ms]");
                         currentCompressedStream.flush();
                         currentCompressedStream.close();
                         currentOutput.flush();
                         currentOutput.close();
                         fileStreams[fileIndex] = null;
-                        if (!Hydrator.INSTANCE.areThereMore(fileIndex + 1)) {
+                        if (originals.size() == fileIndex + 1) {
+                            keepGoing = false;
+                            if (parser != null)
+                                parser.shutDown();
                             completionLogger.log(Level.forName("FINISHED", 700), "Rehydrated everything,exiting");
-                            System.exit(0);
                         }
                     } catch (Exception e) {
                         logger.fatal(e.getMessage());

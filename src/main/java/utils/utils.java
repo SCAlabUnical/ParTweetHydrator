@@ -1,10 +1,23 @@
 package utils;
 
+import hydrator.Hydrator;
+import key.AbstractKey;
+import key.BearerToken;
+import key.OAuth1Token;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.net.URI;
 
-import java.net.http.HttpHeaders;
-import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,22 +42,9 @@ public final class utils {
     }
 
 
-    public static long checkTime(HttpResponse<String> response) {
-        if (response.statusCode() >= 500) throw new IllegalStateException();
-        HttpHeaders header = response.headers();
-        return Long.parseLong(header.firstValue("x-rate-limit-reset").toString().replaceAll("(Optional|[\\[\\]])", ""));
-    }
-
-    public static int checkLimits(HttpResponse<String> response) {
-        if (response.statusCode() >= 500) throw new IllegalStateException();
-        HttpHeaders header = response.headers();
-        return Integer.parseInt(header.firstValue("x-rate-limit-remaining").toString().replaceAll("(Optional|[\\[\\]])", ""));
-    }
-
-
-    public static List<Long> loadTweetIds(String PATH) throws IOException {
+    public static List<String> loadTweetIds(String PATH) throws IOException {
         File f = new File(PATH);
-        List<Long> risultato = new ArrayList<>((int) (f.length() / 20));
+        List<String> risultato = new ArrayList<>((int) (f.length() / 20));
         BufferedReader bf = new BufferedReader(new FileReader(f));
         try {
             String text;
@@ -55,10 +55,9 @@ public final class utils {
                 if (text == null) break;
                 matcher = pattern.matcher(text);
                 if (!matcher.matches()) continue;
-                risultato.add(Long.parseLong(text));
+                risultato.add((text.trim()));
             }
             bf.close();
-            risultato.sort(Long::compare);
             return Collections.unmodifiableList(risultato);
         } finally {
             bf.close();
@@ -100,13 +99,56 @@ public final class utils {
         }
     }
 
-
-    public static URI generateQuery(List<Long> ids, int API_VERSION) {
-        StringBuilder sb = new StringBuilder(API_ENDPOINTS[API_VERSION - 1] + TWEET_RETRIEVAL[API_VERSION - 1]);
-        for (Long x : ids)
-            sb.append(x).append(",");
-        return URI.create(sb.deleteCharAt(sb.length() - 1).append("&tweet_mode=extended").toString());
+    public static AbstractKey[] loadAllTokens(String XMLPATH) {
+        ArrayList<AbstractKey> tokens = new ArrayList<>(100);
+        try {
+            int bearer = 0, oauth1 = 0;
+            AbstractKey currToken;
+            Document xmlDocument = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new File(XMLPATH));
+            String expr = "//BearerToken/text()";
+            XPath xPath = XPathFactory.newInstance().newXPath();
+            NodeList nodeList = (NodeList) xPath.evaluate(expr, xmlDocument, XPathConstants.NODESET);
+            System.out.println("Found " + (bearer = nodeList.getLength()) + " bearer tokes in " + XMLPATH);
+            for (int i = 0; i < nodeList.getLength(); i++)
+                try {
+                    currToken = new BearerToken("Bearer " + nodeList.item(i).getNodeValue().trim());
+                    tokens.add(currToken);
+                } catch (AbstractKey.UnusableKeyException e) {
+                    System.out.println(nodeList.item(i).getNodeValue().trim() + "Is not a valid Bearer token");
+                }
+            expr = "//Progetto";
+            xPath = XPathFactory.newInstance().newXPath();
+            nodeList = (NodeList) xPath.evaluate(expr, xmlDocument, XPathConstants.NODESET);
+            System.out.println("Found " + (oauth1 = nodeList.getLength()) + " sets of  oauth1 tokes in " + XMLPATH);
+            for (int i = 0; i < nodeList.getLength(); i++) {
+                Node project = nodeList.item(i);
+                String[] oauthValues = new String[oauth_1_fields.length];
+                for (int j = 0; j < oauthValues.length; j++) {
+                    xPath = XPathFactory.newInstance().newXPath();
+                    oauthValues[j] = ((String) xPath.evaluate(("./" + oauth_1_fields[j] + "/text()"), project, XPathConstants.STRING)).trim();
+                }
+                try {
+                    currToken = new OAuth1Token(Arrays.copyOf(oauthValues, oauthValues.length));
+                    tokens.add(currToken);
+                } catch (AbstractKey.UnusableKeyException e) {
+                    System.out.println(Arrays.toString(oauthValues) + "Is not a valid set of oauth1 tokens");
+                }
+            }
+            Hydrator.INSTANCE.setCurrentWorkRate((bearer * 300 + oauth1 * 900) * 100);
+        } catch (SAXException | ParserConfigurationException | XPathExpressionException | IOException e) {
+            throw new RuntimeException("File structure invalid,check github for a fac-simile");
+        }
+        Collections.shuffle(tokens, new Random(System.currentTimeMillis()));
+        return tokens.toArray(new AbstractKey[tokens.size()]);
     }
 
+    public static URI generateQuery(List<String> ids, int API_VERSION) {
+        StringBuilder sb = new StringBuilder(API_ENDPOINTS[API_VERSION - 1] + TWEET_RETRIEVAL[API_VERSION - 1]);
+        for (String x : ids)
+            sb.append(x).append(",");
+        return URI.create(sb.deleteCharAt(sb.length() - 1).append("&tweet_mode=extended&map=true").toString());
+    }
+
+    
 
 }

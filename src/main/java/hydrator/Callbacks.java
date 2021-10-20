@@ -26,7 +26,7 @@ public class Callbacks {
                 GraphicModule.INSTANCE.total.setText("/" + Hydrator.INSTANCE.getFileListSize());
                 GraphicModule.INSTANCE.totalWorkToDo.setValue(0);
             } catch (IOException e) {
-                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Wrong directory or file specified,try again", "File Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -35,7 +35,15 @@ public class Callbacks {
 
         @Override
         public void call(String path) {
+            if(Hydrator.INSTANCE.getTweetIdFiles() == null) {
+                JOptionPane.showMessageDialog(null,"Select the input files first");
+                return;
+            }
             Hydrator.INSTANCE.setLogPath(path);
+            GraphicModule.INSTANCE.totalWorkToDo.setIndeterminate(false);
+            GraphicModule.INSTANCE.totalWorkToDo.setMaximum(Hydrator.INSTANCE.getFileListSize());
+            GraphicModule.INSTANCE.total.setText("/" + Hydrator.INSTANCE.getFileListSize());
+            GraphicModule.INSTANCE.totalWorkToDo.setValue(0);
         }
     }
 
@@ -84,7 +92,7 @@ public class Callbacks {
                 try {
                     TimeUnit.SECONDS.sleep(3);
                 } catch (InterruptedException e) {
-                 }
+                }
                 p.dispose();
                 NumberFormat nf = NumberFormat.getNumberInstance(Locale.ITALIAN);
                 DecimalFormat df = (DecimalFormat) nf;

@@ -50,6 +50,10 @@ public final class Buffer<T> {
         instances.add(this);
     }
 
+    public boolean isEmpty(){
+        return size == BUFFER_SIZE;
+    }
+
     public Buffer() {
         BUFFER_SIZE = 500;
         init();

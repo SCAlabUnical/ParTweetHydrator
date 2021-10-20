@@ -23,7 +23,7 @@ public enum GraphicModule {
     //overkill
     StatusPanel statusPanel;
     Semaphore waitForSetup = new Semaphore(0);
-    JLabel completed = new JLabel(""), total = new JLabel(""), workRate, currentTweets = new JLabel( ), requestsSent = new JLabel( );
+    JLabel completed = new JLabel(""), total = new JLabel(""), workRate, currentTweets = new JLabel(), requestsSent = new JLabel();
 
 
     private static class ChooserPanel extends JPanel {
@@ -60,13 +60,10 @@ public enum GraphicModule {
         currentFile.setText("Current file : " + Hydrator.INSTANCE.getOutputFile(index).getName());
         currentFileProgress.setMaximum(requiredAcks);
         currentFileProgress.setValue(val);
+        completed.setText((index) + "");
+        totalWorkToDo.setValue(index + 1);
     }
 
-
-    void fileDone() {
-        completed.setText(Hydrator.INSTANCE.getCompletedFiles() + "");
-        totalWorkToDo.setValue(Hydrator.INSTANCE.getCompletedFiles());
-    }
 
     GraphicModule() {
         requestsSent.setToolTipText("Tweets Rehydrated/Requests Sent/IDs loaded");
@@ -134,8 +131,11 @@ public enum GraphicModule {
                 statusPanel.dummyTimer.start();
                 while (true) {
                     currentFileProgress.setValue((int) Hydrator.INSTANCE.ioHandler.getCurrentAcks());
-                    currentTweets.setText(df.format(ResponseParser.getRehydratedTweets()));
+                    currentTweets.setText(df.format(Hydrator.INSTANCE.parser.getRehydratedTweets()));
                     requestsSent.setText("/" + df.format(Hydrator.INSTANCE.executor.getRequests()) + "/" + df.format(Hydrator.INSTANCE.supplier.getTotalTweets()));
+                    int[] currentStatus = Hydrator.INSTANCE.ioHandler.getCurrentFile();
+                    if (currentStatus  != null)
+                        updateCurrentFile(currentStatus[0], currentStatus[1], currentStatus[2]);
                     statusPanel.dummyTimer.updateGUI();
                     Thread.sleep(150);
                 }
@@ -151,12 +151,14 @@ public enum GraphicModule {
             }
             if (Hydrator.INSTANCE.isRunning()) {
                 try {
+                    System.out.println(Hydrator.INSTANCE.executor.isPaused());
                     if (!Hydrator.INSTANCE.executor.isPaused())
                         Hydrator.INSTANCE.executor.pauseExecutor();
                     else Hydrator.INSTANCE.executor.resumeWork();
                     statusPanel.currentState = Hydrator.INSTANCE.executor.isPaused() ? StatusPanel.state.PAUSED : StatusPanel.state.HYDRATING;
                     statusPanel.revalidate();
                 } catch (InterruptedException e) {
+                    Hydrator.INSTANCE.stop();
                     Hydrator.INSTANCE.executor.resumeWork();
                     System.out.println("Failed to pause the executor");
                     System.out.println(e);

@@ -2,5 +2,5 @@ package dataStructures;
 
 import java.util.List;
 
-public record WorkKit(List<Long> ids, int fileIndex) {
+public record WorkKit(List<String> ids, int fileIndex) {
 }

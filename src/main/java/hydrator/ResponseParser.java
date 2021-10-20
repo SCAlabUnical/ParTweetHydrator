@@ -7,7 +7,7 @@ import dataStructures.WrappedCompletableFuture;
 import dataStructures.WrappedHTTPRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.ParsingStrategy;
+import strategy.ParsingStrategy;
 
 
 import java.io.*;
@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 
 public class ResponseParser {
@@ -27,21 +28,24 @@ public class ResponseParser {
     private PrintWriter[] loggers = new PrintWriter[PARSER_POOL];
     private Buffer<WrappedCompletableFuture> workSet;
     private Buffer<ByteAndDestination> queueToFile;
-    private final String logPath;
     private final RequestExecutor executor;
     private static long rehydratedTweets = 0;
     private long notificationExpireTimestap = Long.MAX_VALUE;
     private final ParsingStrategy parsingStrategy;
+    private ExecutorService executorService;
 
-    public ResponseParser(RequestExecutor executor, Buffer<WrappedCompletableFuture> outerWorkset, Buffer<ByteAndDestination> outerOutput, String logPath, ParsingStrategy strategy) {
+    public ResponseParser(RequestExecutor executor, Buffer<WrappedCompletableFuture> outerWorkset, Buffer<ByteAndDestination> outerOutput, ParsingStrategy strategy) {
         this.workSet = outerWorkset;
         this.parsingStrategy = strategy;
         this.executor = executor;
         this.queueToFile = outerOutput;
-        this.logPath = logPath;
     }
 
-    public static long getRehydratedTweets() {
+    public void shutDown() {
+        executorService.shutdown();
+    }
+
+    public long getRehydratedTweets() {
         return rehydratedTweets;
     }
 
@@ -50,11 +54,12 @@ public class ResponseParser {
     }
 
     public void startWorkers() {
-        ExecutorService executorService = Executors.newCachedThreadPool();
+        executorService = Executors.newCachedThreadPool();
         for (int i = 0; i < PARSER_POOL; i++)
             executorService.execute(new ParserWorker(i));
 
     }
+
 
     public void attachHandler(RequestsSupplier handler) {
         this.handler = handler;
@@ -79,7 +84,7 @@ public class ResponseParser {
         }
 
         public void run() {
-            List<byte[]> tweets;
+            Collection<byte[]> tweets;
             WrappedCompletableFuture currentItem;
             HttpResponse<String> response;
             CompletableFuture<HttpResponse<String>> futureResponse;
@@ -98,9 +103,7 @@ public class ResponseParser {
                                 return resp;
                             }
                     );
-
                     response = futureResponse.join();
-
                     if (!err[0]) {
                         if (response.statusCode() == 200) {
                             queueToFile.put(new ByteAndDestination(tweets = parsingStrategy.parse(response.body()), currentItem.fileIndex(), currentItem.packetNumber()));
