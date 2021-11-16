@@ -108,18 +108,19 @@ public final class utils {
             String expr = "//BearerToken/text()";
             XPath xPath = XPathFactory.newInstance().newXPath();
             NodeList nodeList = (NodeList) xPath.evaluate(expr, xmlDocument, XPathConstants.NODESET);
-            System.out.println("Found " + (bearer = nodeList.getLength()) + " bearer tokes in " + XMLPATH);
+            System.out.println("Found " + (bearer = nodeList.getLength()) + " bearer tokens in " + XMLPATH);
             for (int i = 0; i < nodeList.getLength(); i++)
                 try {
                     currToken = new BearerToken("Bearer " + nodeList.item(i).getNodeValue().trim());
                     tokens.add(currToken);
                 } catch (AbstractKey.UnusableKeyException e) {
                     System.out.println(nodeList.item(i).getNodeValue().trim() + "Is not a valid Bearer token");
+                    bearer--;
                 }
             expr = "//Progetto";
             xPath = XPathFactory.newInstance().newXPath();
             nodeList = (NodeList) xPath.evaluate(expr, xmlDocument, XPathConstants.NODESET);
-            System.out.println("Found " + (oauth1 = nodeList.getLength()) + " sets of  oauth1 tokes in " + XMLPATH);
+            System.out.println("Found " + (oauth1 = nodeList.getLength()) + " sets of  oauth1 tokens in " + XMLPATH);
             for (int i = 0; i < nodeList.getLength(); i++) {
                 Node project = nodeList.item(i);
                 String[] oauthValues = new String[oauth_1_fields.length];
@@ -132,6 +133,7 @@ public final class utils {
                     tokens.add(currToken);
                 } catch (AbstractKey.UnusableKeyException e) {
                     System.out.println(Arrays.toString(oauthValues) + "Is not a valid set of oauth1 tokens");
+                    oauth1--;
                 }
             }
             Hydrator.INSTANCE.setCurrentWorkRate((bearer * 300 + oauth1 * 900) * 100);
@@ -149,6 +151,5 @@ public final class utils {
         return URI.create(sb.deleteCharAt(sb.length() - 1).append("&tweet_mode=extended&map=true").toString());
     }
 
-    
 
 }

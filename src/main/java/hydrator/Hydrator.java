@@ -25,9 +25,6 @@ public enum Hydrator {
     private static final Logger logger = LogManager.getLogger(Hydrator.class.getName());
     private AbstractKey[] tokens;
 
-    public List<File> getTweetIdFiles() {
-        return tweetIdFiles;
-    }
 
     private List<File> tweetIdFiles, rehydratedFiles;
     private HashMap<Integer, Long> timeElapsed = new HashMap<>();
@@ -43,6 +40,9 @@ public enum Hydrator {
     private int completedFiles = 0;
     private boolean isRunning = false;
 
+    public List<File> getTweetIdFiles() {
+        return tweetIdFiles;
+    }
     boolean isRunning() {
         return isRunning;
     }
@@ -57,7 +57,7 @@ public enum Hydrator {
 
     public enum exec_setting {SLOW, FAST, VERY_FAST}
 
-    final static float version = 2.2f;
+    final static float version = 2.21f;
 
     public int getCurrentWorkRate() {
         return currentWorkRate;
@@ -147,7 +147,7 @@ public enum Hydrator {
             System.out.println("Logging is disabled due to the missing config file");
         else
             ctx.reconfigure();
-        int buffer_sizes = (int) Math.pow(10, (rate.ordinal() + 2));
+        int buffer_sizes = (int) Math.pow(10, (rate.ordinal()));
         risposteHTTP = new Buffer<>(buffer_sizes, "risposteHTTP");
         codaOutput = new Buffer<>(buffer_sizes, "queueToDisk");
         tweetIdFiles = Collections.unmodifiableList(tweetIdFiles);
@@ -198,7 +198,6 @@ public enum Hydrator {
         for (File tweetIds : tweetIdFiles) {
             try {
                 ids = loadTweetIds(tweetIds.getAbsolutePath());
-                System.out.println(ids);
                 target = (int) Math.ceil((double) ids.size() / 100);
                 ioHandler.setTargetPerFile(index, target);
                 supplier.workSetRefresh(new WorkKit(ids, index++));

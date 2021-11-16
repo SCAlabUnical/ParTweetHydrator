@@ -114,7 +114,6 @@ public class ResponseParser extends Thread {
                     System.out.println("Parser closed all streams");
                     fileIsDone.release();
                 } catch (IOException e) {
-                    System.out.println("no comment...");
                 }
             }
 

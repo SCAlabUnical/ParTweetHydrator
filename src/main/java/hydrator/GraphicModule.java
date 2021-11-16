@@ -33,7 +33,7 @@ public enum GraphicModule {
             super(new GridLayout(3, 0));
             JFileChooser fileChooser = new JFileChooser();
             JLabel top = new JLabel(topLabel, SwingConstants.CENTER);
-            mid = new JLabel("Currently selected : " + fileChooser.getSelectedFile(), SwingConstants.CENTER);
+            mid = new JLabel("Currently selected : " + (fileChooser.getSelectedFile() == null ? "" : fileChooser.getSelectedFile().toString()), SwingConstants.CENTER);
             fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             JButton toggleChooser = new JButton("Press to select");
             JPanel chooserHolder = new JPanel();
@@ -41,7 +41,7 @@ public enum GraphicModule {
             toggleChooser.addActionListener(action -> {
                 int res = fileChooser.showOpenDialog(this);
                 if (res == JFileChooser.APPROVE_OPTION) {
-                    mid.setText("Selected : " + fileChooser.getSelectedFile());
+                    mid.setText("Currently Selected : " + fileChooser.getSelectedFile());
                     s.call(fileChooser.getSelectedFile() + "");
                 }
             });
@@ -71,20 +71,22 @@ public enum GraphicModule {
         DecimalFormat df = (DecimalFormat) nf;
         mainFrame = new JFrame();
         mainFrame.setSize(new Dimension(550, 870));
-        mainFrame.setTitle("Hydrator v" + Hydrator.version);
-        ChooserPanel[] panels = {new ChooserPanel("Select the folder containing the tweet IDs", new Callbacks.setIDsPath()),
-                new ChooserPanel("Select the folder containing the Accounts.xml file", new Callbacks.setAuthTokens()),
+        mainFrame.setTitle("ParTweetHydrator v" + Hydrator.version);
+        ChooserPanel[] panels = {new ChooserPanel("Select the folder containing the IDs", new Callbacks.setIDsPath()),
+                new ChooserPanel("Enter the file containing your tokens", new Callbacks.setAuthTokens()),
                 new ChooserPanel("Select the save path for the rehydrated tweets", new Callbacks.setSavePath()),
-                new ChooserPanel("Select the folder to store logs in", new Callbacks.setLogPath())
+                new ChooserPanel("Select the log folder", new Callbacks.setLogPath())
         };
         panels[3].updateMidLabel("Currently selected : " + System.getProperty("java.io.tmpdir"));
-        JLabel currentRate = new JLabel("Select a rate");
+        JLabel currentRate = new JLabel("Select your desired speed");
         JComboBox<Hydrator.exec_setting> rate = new JComboBox<>(Hydrator.exec_setting.values());
         rate.addActionListener(action -> {
             Hydrator.INSTANCE.setRate((Hydrator.exec_setting) rate.getSelectedItem());
-            currentRate.setText("Selected rate is : " + rate.getSelectedItem());
+            currentRate.setText("Currently selected speed : " + rate.getSelectedItem());
         });
+
         JPanel container = new JPanel();
+        JScrollPane scrollableContainer = new JScrollPane(container);
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
         JPanel selectionPanel = new JPanel(), bottomPanel = new JPanel();
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
@@ -134,7 +136,7 @@ public enum GraphicModule {
                     currentTweets.setText(df.format(Hydrator.INSTANCE.parser.getRehydratedTweets()));
                     requestsSent.setText("/" + df.format(Hydrator.INSTANCE.executor.getRequests()) + "/" + df.format(Hydrator.INSTANCE.supplier.getTotalTweets()));
                     int[] currentStatus = Hydrator.INSTANCE.ioHandler.getCurrentFile();
-                    if (currentStatus  != null)
+                    if (currentStatus != null)
                         updateCurrentFile(currentStatus[0], currentStatus[1], currentStatus[2]);
                     statusPanel.dummyTimer.updateGUI();
                     Thread.sleep(150);
@@ -161,7 +163,7 @@ public enum GraphicModule {
                     Hydrator.INSTANCE.stop();
                     Hydrator.INSTANCE.executor.resumeWork();
                     System.out.println("Failed to pause the executor");
-                    System.out.println(e);
+
                 }
             }
             if (!Hydrator.INSTANCE.isRunning()) {
@@ -173,7 +175,10 @@ public enum GraphicModule {
         JPanel buttonHolder = new JPanel();
         buttonHolder.add(hydrate);
         container.add(buttonHolder);
-        mainFrame.add(container);
+        scrollableContainer.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollableContainer.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        mainFrame.add(scrollableContainer);
         mainFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         selectionPanel.setBorder(BorderFactory.createEmptyBorder(25, 50, 15, 50));
         mainFrame.addComponentListener(new ComponentAdapter() {
