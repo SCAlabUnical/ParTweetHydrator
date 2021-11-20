@@ -9,7 +9,7 @@ import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
+//Implementazione OOP delle callback sfruttando il Design Pattern Command
 public class Callbacks {
     interface MyCallbacks {
         void call(String s);
