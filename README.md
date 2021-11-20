@@ -17,5 +17,5 @@ It supports OAUTH1 authentication and OAUTH2 bearer tokens and is capable of han
 ![Alt text](screen_2.png?raw=true "Hydrating")
 
 
-##Requirements
+## Requirements
 Java version 16+ is required since the application uses the new record classes.
